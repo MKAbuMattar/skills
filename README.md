@@ -18,6 +18,12 @@ Production-ready scripts with proper error handling, validated input, and cross-
   npx skills@latest add MKAbuMattar/skills/python-script-developer
   ```
 
+- **makefile-script-developer** — Write production-ready GNU Makefiles with strict shell mode (`SHELL := /bin/bash` + `.SHELLFLAGS := -euo pipefail -c`), validated multi-environment configuration, pre-flight check targets, structured logging, confirmation gates for destructive ops, and self-documenting help. Includes templates for simple build/test, Terraform multi-env, Helm deploy/recover, chart packaging, and cross-platform binary builds.
+
+  ```
+  npx skills@latest add MKAbuMattar/skills/makefile-script-developer
+  ```
+
 ## Authoring
 
 Tools for building more skills.
@@ -35,9 +41,10 @@ If you prefer not to use the `skills` CLI, clone and symlink:
 ```bash
 git clone https://github.com/MKAbuMattar/skills.git
 mkdir -p ~/.claude/skills
-ln -s "$PWD/skills/linux-script-developer"  ~/.claude/skills/
-ln -s "$PWD/skills/python-script-developer" ~/.claude/skills/
-ln -s "$PWD/skills/skill-builder"           ~/.claude/skills/
+ln -s "$PWD/skills/linux-script-developer"    ~/.claude/skills/
+ln -s "$PWD/skills/python-script-developer"   ~/.claude/skills/
+ln -s "$PWD/skills/makefile-script-developer" ~/.claude/skills/
+ln -s "$PWD/skills/skill-builder"             ~/.claude/skills/
 ```
 
 For other clients, see each tool's skill discovery path in the [client showcase](https://agentskills.io/clients).

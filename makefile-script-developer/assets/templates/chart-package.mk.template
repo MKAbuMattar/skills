@@ -1,0 +1,137 @@
+# ==============================================================================
+# Helm Chart Packaging Makefile — lint / template / package / push
+#
+# Designed for a single-chart repo. Pushes either to OCI registry or to a
+# traditional Helm repo (OBS / S3 / GCS / etc.) depending on which target is
+# invoked.
+#
+# Usage:
+#   make lint
+#   make render RELEASE_NAME=test NAMESPACE=staging
+#   make package OUTPUT_DIR=pkg
+#   make push CREDENTIALS=secrets/credentials.yaml
+# ==============================================================================
+
+SHELL         := /bin/bash
+.SHELLFLAGS   := -euo pipefail -c
+.DEFAULT_GOAL := help
+.DELETE_ON_ERROR:
+MAKEFLAGS     += --warn-undefined-variables --no-print-directory
+
+# ------------------------------------------------------------------------------
+# Configuration
+# ------------------------------------------------------------------------------
+
+CHART_NAME    := my-chart
+CHART_DIR     := $(CHART_NAME)
+OUTPUT_DIR    ?= pkg
+RELEASE_NAME  ?= my-release
+NAMESPACE     ?= default
+CREDENTIALS   ?= secrets/credentials.yaml
+REGISTRY      ?= registry.example.com
+REGISTRY_PATH ?= charts
+EXTRA_ARGS    ?=
+
+# Read version from Chart.yaml at runtime (lazy)
+VERSION       = $(shell yq '.version' $(CHART_DIR)/Chart.yaml)
+
+# ------------------------------------------------------------------------------
+# Pre-flight
+# ------------------------------------------------------------------------------
+
+.PHONY: check-tools
+check-tools: ## Verify helm and yq
+	@command -v helm >/dev/null 2>&1 || { echo "ERROR: helm not installed"; exit 1; }
+	@command -v yq   >/dev/null 2>&1 || { echo "ERROR: yq not installed";   exit 1; }
+	@echo "Tools OK"
+
+.PHONY: check-credentials
+check-credentials: ## Verify credentials file
+	@[ -f "$(CREDENTIALS)" ] || { \
+		echo "ERROR: $(CREDENTIALS) not found"; \
+		echo "  Copy from secrets/credentials.example.yaml and fill in values"; \
+		exit 1; \
+	}
+	@echo "Credentials OK"
+
+# ------------------------------------------------------------------------------
+# Chart operations
+# ------------------------------------------------------------------------------
+
+.PHONY: lint
+lint: check-tools ## helm lint
+	@helm lint $(CHART_DIR) $(EXTRA_ARGS)
+	@echo "Lint passed"
+
+.PHONY: render
+render: check-tools ## Render templates without applying
+	@helm template $(RELEASE_NAME) $(CHART_DIR) \
+	  --namespace $(NAMESPACE) --debug $(EXTRA_ARGS)
+
+.PHONY: version
+version: check-tools ## Print chart version
+	@yq '.version' $(CHART_DIR)/Chart.yaml
+
+.PHONY: package
+package: lint ## helm package -> $(OUTPUT_DIR)
+	@mkdir -p $(OUTPUT_DIR)
+	@helm package $(CHART_DIR) --destination $(OUTPUT_DIR) $(EXTRA_ARGS)
+	@echo "Packaged: $(OUTPUT_DIR)/$(CHART_NAME)-$(VERSION).tgz"
+
+# ------------------------------------------------------------------------------
+# Push
+# ------------------------------------------------------------------------------
+
+.PHONY: push
+push: package check-credentials ## Push to OCI registry
+	@USER=$$(yq '.registry.username' $(CREDENTIALS)); \
+	PASS=$$(yq '.registry.password' $(CREDENTIALS)); \
+	echo "$$PASS" | helm registry login -u "$$USER" --password-stdin $(REGISTRY); \
+	helm push $(OUTPUT_DIR)/$(CHART_NAME)-$(VERSION).tgz oci://$(REGISTRY)/$(REGISTRY_PATH); \
+	echo "Pushed: oci://$(REGISTRY)/$(REGISTRY_PATH)/$(CHART_NAME):$(VERSION)"
+
+# Traditional Helm repo (HTTP) — generates index.yaml and uploads
+.PHONY: push-repo
+push-repo: package check-credentials ## Push to traditional Helm repo (rewrites index.yaml)
+	@helm repo index $(OUTPUT_DIR) --merge $(OUTPUT_DIR)/index.yaml 2>/dev/null \
+	  || helm repo index $(OUTPUT_DIR)
+	@echo "index.yaml generated. Upload $(OUTPUT_DIR)/ to your storage:"
+	@ls -lh $(OUTPUT_DIR)/
+
+# ------------------------------------------------------------------------------
+# Maintenance
+# ------------------------------------------------------------------------------
+
+.PHONY: clean
+clean: ## Remove packaged charts
+	@rm -f $(OUTPUT_DIR)/*.tgz $(OUTPUT_DIR)/index.yaml 2>/dev/null || true
+	@echo "Cleaned"
+
+# ------------------------------------------------------------------------------
+# Help
+# ------------------------------------------------------------------------------
+
+.PHONY: help
+help: ## Show this help
+	@echo ""
+	@echo "Helm Chart Packaging — $(CHART_NAME)"
+	@echo ""
+	@echo "VARIABLES:"
+	@echo "  OUTPUT_DIR     Output directory  (default: pkg)"
+	@echo "  CREDENTIALS    YAML file with registry username/password  (default: secrets/credentials.yaml)"
+	@echo "  RELEASE_NAME   helm template release name  (default: my-release)"
+	@echo "  NAMESPACE      helm template namespace      (default: default)"
+	@echo "  REGISTRY       OCI registry hostname"
+	@echo "  REGISTRY_PATH  Path within registry         (default: charts)"
+	@echo "  EXTRA_ARGS     Extra args passed to helm"
+	@echo ""
+	@echo "TARGETS:"
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
+	  awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
+	@echo ""
+	@echo "EXAMPLES:"
+	@echo "  make package OUTPUT_DIR=/tmp/charts"
+	@echo "  make push REGISTRY=registry.example.com REGISTRY_PATH=charts/team"
+	@echo "  make render RELEASE_NAME=staging NAMESPACE=staging"
+	@echo "  make lint EXTRA_ARGS='--strict'"
+	@echo ""

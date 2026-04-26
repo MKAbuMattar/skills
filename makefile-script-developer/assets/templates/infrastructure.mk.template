@@ -1,0 +1,284 @@
+# ==============================================================================
+# Infrastructure Makefile — Terraform multi-environment deployments
+#
+# Features:
+#   - Strict shell mode  (set -euo pipefail)
+#   - Parse-time ENV / LAYER validation
+#   - Pre-flight check-tools / check-env / check-state
+#   - Logging to logs/<layer>/<env>/<command>_<timestamp>.log
+#   - Automatic state backup before apply / destroy
+#   - Confirmation gates on destroy (CI=true to bypass)
+#   - Per-env plan files: <layer>/tf-<env>.tfplan
+#
+# Usage:
+#   make deploy      ENV=dev LAYER=app
+#   make dry-run     ENV=dev LAYER=app
+#   make safe-apply  ENV=dev LAYER=app
+#   make destroy     ENV=dev LAYER=app
+#   CI=true make apply ENV=prod LAYER=app   # skip confirmation
+# ==============================================================================
+
+SHELL         := /bin/bash
+.SHELLFLAGS   := -euo pipefail -c
+.DEFAULT_GOAL := help
+.DELETE_ON_ERROR:
+MAKEFLAGS     += --warn-undefined-variables --no-print-directory
+
+# ------------------------------------------------------------------------------
+# Configuration
+# ------------------------------------------------------------------------------
+
+ALLOWED_ENVS   := dev staging prod
+ALLOWED_LAYERS := bootstrap shared app
+
+ENV   ?= dev
+LAYER ?= app
+
+ifeq (,$(filter $(LAYER),$(ALLOWED_LAYERS)))
+$(error LAYER must be one of: $(ALLOWED_LAYERS))
+endif
+ifeq (,$(filter $(ENV),$(ALLOWED_ENVS)))
+$(error ENV must be one of: $(ALLOWED_ENVS))
+endif
+
+TF           := terraform
+PLAN_FILE    := tf-$(ENV).tfplan
+BACKEND_HCL  := backend/$(ENV)/backend.hcl
+ENV_VAR      := -var="env=$(ENV)"
+
+TIMESTAMP := $(shell date +"%Y-%m-%d_%H-%M-%S")
+DATE      := $(shell date +"%Y-%m-%d")
+LOG_DIR   := logs/$(LAYER)/$(ENV)/$(DATE)
+LOG_FILE   = $(LOG_DIR)/$(CMD)_$(TIMESTAMP).log
+
+# Optional inputs
+TARGET     ?=
+VARS       ?=
+EXTRA_ARGS ?=
+RESOURCE   ?=
+ID         ?=
+
+VAR_ARGS   := $(foreach v,$(VARS),-var $(v))
+TARGET_ARG :=
+ifdef TARGET
+TARGET_ARG := -target=$(TARGET)
+endif
+
+# ------------------------------------------------------------------------------
+# Pre-flight
+# ------------------------------------------------------------------------------
+
+.PHONY: check-tools
+check-tools: ## Verify terraform and required tools
+	@command -v $(TF) >/dev/null 2>&1 || { echo "ERROR: terraform not installed"; exit 1; }
+	@command -v jq    >/dev/null 2>&1 || { echo "WARN:  jq not installed (optional)"; }
+	@echo "Tools OK"
+
+.PHONY: check-env
+check-env: ## Verify backend config and layer dir
+	@[ -d "$(LAYER)" ]                    || { echo "ERROR: $(LAYER)/ not found";          exit 1; }
+	@[ -f "$(LAYER)/$(BACKEND_HCL)" ]     || { echo "ERROR: $(LAYER)/$(BACKEND_HCL) not found"; exit 1; }
+	@echo "Environment OK ($(LAYER), $(ENV))"
+
+.PHONY: check-state
+check-state: ## Probe whether state is initialized
+	@cd $(LAYER) && $(TF) state list >/dev/null 2>&1 \
+	  && echo "State accessible" \
+	  || echo "WARN: State not initialized"
+
+# ------------------------------------------------------------------------------
+# Logging macro — captures all stdout+stderr to LOG_FILE
+# ------------------------------------------------------------------------------
+
+define run_with_log
+	@mkdir -p $(LOG_DIR)
+	@echo "===== $(CMD) START $(TIMESTAMP) =====" | tee -a $(LOG_FILE)
+	@cd $(LAYER) && $(1) 2>&1 | sed 's/\x1b\[[0-9;]*m//g' | tee -a ../$(LOG_FILE); EXIT_CODE=$$?; \
+	echo "===== $(CMD) END (EXIT: $$EXIT_CODE) =====" | tee -a ../$(LOG_FILE); \
+	exit $$EXIT_CODE
+endef
+
+# ------------------------------------------------------------------------------
+# State backup (always before apply / destroy)
+# ------------------------------------------------------------------------------
+
+.PHONY: backup-state
+backup-state: check-env ## Pull state and save a timestamped backup
+	@mkdir -p $(LAYER)/state/$(ENV)
+	@cd $(LAYER) && \
+	if $(TF) state pull > /dev/null 2>&1; then \
+		$(TF) state pull > state/$(ENV)/terraform.tfstate.backup.$(TIMESTAMP); \
+		echo "State backed up: $(LAYER)/state/$(ENV)/terraform.tfstate.backup.$(TIMESTAMP)"; \
+	else \
+		echo "WARN: state not initialized — nothing to backup"; \
+	fi
+
+# ------------------------------------------------------------------------------
+# Core commands
+# ------------------------------------------------------------------------------
+
+.PHONY: init
+init: check-tools check-env ## terraform init -reconfigure -backend-config
+	$(eval CMD=init)
+	@echo "Initializing for ENV=$(ENV) LAYER=$(LAYER)"
+	@$(call run_with_log,$(TF) init -reconfigure -backend-config=$(BACKEND_HCL) $(EXTRA_ARGS))
+
+.PHONY: plan
+plan: check-tools check-env ## terraform plan -out=tf-<env>.tfplan
+	$(eval CMD=plan)
+	@echo "Planning for ENV=$(ENV) LAYER=$(LAYER)"
+	$(call run_with_log,$(TF) plan -out=$(PLAN_FILE) $(ENV_VAR) $(VAR_ARGS) $(TARGET_ARG) $(EXTRA_ARGS))
+
+.PHONY: apply
+apply: check-tools check-env backup-state ## Apply existing plan file (requires CI=true or interactive approval)
+	$(eval CMD=apply)
+	@[ -f "$(LAYER)/$(PLAN_FILE)" ] \
+	  || { echo "ERROR: $(LAYER)/$(PLAN_FILE) not found. Run 'make plan ENV=$(ENV)' first"; exit 1; }
+	@[ "$(CI)" = "true" ] || { \
+		echo "Applying $(PLAN_FILE) — requires explicit approval"; \
+		read -p "Type 'approve' to continue: " approval; \
+		[ "$$approval" = "approve" ] || { echo "Cancelled"; exit 1; }; \
+	}
+	$(call run_with_log,$(TF) apply $(PLAN_FILE))
+
+.PHONY: destroy
+destroy: check-tools check-env backup-state ## Destroy infrastructure (requires confirmation)
+	$(eval CMD=destroy)
+	@echo "WARNING: This will DESTROY infrastructure in ENV=$(ENV) LAYER=$(LAYER)"
+	@read -p "Type 'destroy-$(ENV)' to confirm: " confirm; \
+	[ "$$confirm" = "destroy-$(ENV)" ] || { echo "Cancelled"; exit 1; }
+	$(call run_with_log,$(TF) destroy $(ENV_VAR) $(VAR_ARGS) $(EXTRA_ARGS))
+
+.PHONY: validate
+validate: check-tools ## terraform validate
+	$(eval CMD=validate)
+	@cd $(LAYER) && $(TF) init -backend=false -upgrade 2>/dev/null || true
+	$(call run_with_log,$(TF) validate)
+
+.PHONY: fmt
+fmt: check-tools ## terraform fmt -recursive
+	$(eval CMD=fmt)
+	$(call run_with_log,$(TF) fmt -recursive)
+
+.PHONY: show
+show: check-tools check-state ## Show current state or plan
+	$(eval CMD=show)
+	$(call run_with_log,$(TF) show $(EXTRA_ARGS))
+
+.PHONY: output
+output: check-tools check-state ## Display outputs
+	$(eval CMD=output)
+	$(call run_with_log,$(TF) output)
+
+# ------------------------------------------------------------------------------
+# State operations
+# ------------------------------------------------------------------------------
+
+.PHONY: state-list
+state-list: check-tools ## terraform state list
+	$(eval CMD=state-list)
+	$(call run_with_log,$(TF) state list)
+
+.PHONY: state-show
+state-show: check-tools ## terraform state show RESOURCE=...
+	$(eval CMD=state-show)
+	@[ -n "$(RESOURCE)" ] || { echo "ERROR: RESOURCE required"; exit 1; }
+	$(call run_with_log,$(TF) state show '$(RESOURCE)')
+
+.PHONY: state-rm
+state-rm: check-tools ## terraform state rm RESOURCE=...
+	$(eval CMD=state-rm)
+	@[ -n "$(RESOURCE)" ] || { echo "ERROR: RESOURCE required"; exit 1; }
+	$(call run_with_log,$(TF) state rm '$(RESOURCE)')
+
+.PHONY: import
+import: check-tools ## terraform import RESOURCE=... ID=...
+	$(eval CMD=import)
+	@[ -n "$(RESOURCE)" ] && [ -n "$(ID)" ] \
+	  || { echo "ERROR: RESOURCE and ID required"; exit 1; }
+	$(call run_with_log,$(TF) import $(ENV_VAR) $(VAR_ARGS) '$(RESOURCE)' '$(ID)')
+
+# ------------------------------------------------------------------------------
+# Composite workflows
+# ------------------------------------------------------------------------------
+
+.PHONY: deploy
+deploy: validate init plan apply ## Full pipeline: validate + init + plan + apply
+	@echo "Deployment complete for ENV=$(ENV)"
+
+.PHONY: dry-run
+dry-run: validate init plan ## Plan-only — no changes applied
+	@echo "Dry-run complete. Review with: make show ENV=$(ENV) LAYER=$(LAYER)"
+
+.PHONY: safe-apply
+safe-apply: backup-state apply ## Apply with state backup
+	@echo "Safe apply complete"
+
+.PHONY: rollback
+rollback: check-env ## Restore latest state backup
+	@LATEST=$$(ls -t $(LAYER)/state/$(ENV)/terraform.tfstate.backup.* 2>/dev/null | head -1); \
+	if [ -z "$$LATEST" ]; then echo "ERROR: no backups in $(LAYER)/state/$(ENV)/"; exit 1; fi; \
+	echo "Latest backup: $$LATEST"; \
+	read -p "Type 'rollback' to confirm: " confirm; \
+	[ "$$confirm" = "rollback" ] || { echo "Cancelled"; exit 1; }; \
+	cd $(LAYER) && $(TF) state push ../$$LATEST; \
+	echo "Rolled back to $$LATEST"
+
+# ------------------------------------------------------------------------------
+# Maintenance
+# ------------------------------------------------------------------------------
+
+.PHONY: logs
+logs: ## Show latest logs for ENV/LAYER
+	@ls -lah logs/$(LAYER)/$(ENV)/ 2>/dev/null || echo "No logs"
+
+.PHONY: clean-logs
+clean-logs: ## Remove all logs
+	rm -rf logs/*
+	@echo "Logs cleaned"
+
+.PHONY: clean-plans
+clean-plans: ## Remove all .tfplan files
+	@find . -name "tf-*.tfplan" -delete
+	@echo "Plan files cleaned"
+
+.PHONY: clean
+clean: clean-logs clean-plans ## Remove logs and plan files
+	@echo "Cleaned"
+
+.PHONY: version
+version: ## Show terraform version
+	@$(TF) --version
+
+# ------------------------------------------------------------------------------
+# Help
+# ------------------------------------------------------------------------------
+
+.PHONY: help
+help: ## Show this help
+	@echo ""
+	@echo "============================================================"
+	@echo "  Infrastructure Makefile"
+	@echo "============================================================"
+	@echo ""
+	@echo "VARIABLES:"
+	@echo "  ENV       (default: dev)         | dev | staging | prod"
+	@echo "  LAYER     (default: app)         | bootstrap | shared | app"
+	@echo "  TARGET    (optional)             | -target=<addr>"
+	@echo "  VARS      (optional)             | -var key=value (space-separated)"
+	@echo "  CI=true                          | skip approval prompts"
+	@echo ""
+	@echo "TARGETS:"
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
+	  awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
+	@echo ""
+	@echo "EXAMPLES:"
+	@echo "  make deploy ENV=dev LAYER=app"
+	@echo "  make dry-run ENV=staging LAYER=app"
+	@echo "  make apply ENV=dev LAYER=app TARGET=module.vpc"
+	@echo "  make rollback ENV=prod LAYER=app"
+	@echo "  CI=true make apply ENV=prod LAYER=app"
+	@echo ""
+	@echo "LOGS:"
+	@echo "  logs/<layer>/<env>/<command>_<timestamp>.log"
+	@echo ""

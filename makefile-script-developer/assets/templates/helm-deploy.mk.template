@@ -1,0 +1,276 @@
+# ==============================================================================
+# Helm Deployment Makefile — install / upgrade / rollback / uninstall
+#
+# Features:
+#   - Layered .env files (.env.sample → .env → envs/<INSTANCE>.env)
+#   - Multi-instance support via INSTANCE=<name>
+#   - Stuck-release detection and force-cleanup
+#   - Per-step timing
+#   - helm-recover / helm-purge for wedged releases
+#
+# Usage:
+#   make deploy
+#   make deploy-instance INSTANCE=tenant-a
+#   make upgrade
+#   make rollback-app
+#   make uninstall                            # requires confirmation
+#   make helm-recover RELEASE=foo NS=ns REV=3
+# ==============================================================================
+
+SHELL         := /bin/bash
+.SHELLFLAGS   := -euo pipefail -c
+.DEFAULT_GOAL := help
+.DELETE_ON_ERROR:
+MAKEFLAGS     += --no-print-directory
+
+# ------------------------------------------------------------------------------
+# Layered env loading
+#   .env.sample  — committed defaults
+#   .env         — local overrides (gitignored)
+#   envs/<INSTANCE>.env — per-instance overrides
+# ------------------------------------------------------------------------------
+
+-include .env.sample
+-include .env
+ifneq ($(INSTANCE),)
+  -include envs/$(INSTANCE).env
+endif
+export
+
+# ------------------------------------------------------------------------------
+# Configuration
+# ------------------------------------------------------------------------------
+
+INSTANCE   ?=
+NAMESPACE  := $(if $(INSTANCE),$(INSTANCE),$(if $(NAMESPACE),$(NAMESPACE),default))
+CHARTS_DIR ?= charts
+LOG_DIR    := logs
+TIMESTAMP  := $(shell date +"%Y-%m-%d_%H-%M-%S")
+
+REGISTRY         ?= docker.io
+REGISTRY_USER    ?=
+REGISTRY_PASS    ?=
+PULL_SECRET_NAME ?= image-pull-secret
+TLS_CERT         ?= certs/tls.crt
+TLS_KEY          ?= certs/tls.key
+TLS_SECRET_NAME  ?= app-tls
+
+RELEASE_APP ?= app
+VALUES_APP  ?=
+_vf_app      = $(if $(VALUES_APP),-f $(VALUES_APP))
+
+# Helm-recover defaults
+RELEASE   ?=
+NS        ?=
+REV       ?=
+POD_LABEL ?= app.kubernetes.io/name=$(RELEASE)
+
+define log
+	@mkdir -p $(LOG_DIR)
+	@echo "[$(TIMESTAMP)] [$(NAMESPACE)] $(1)" | tee -a $(LOG_DIR)/deploy.log
+endef
+
+# ------------------------------------------------------------------------------
+# Pre-flight
+# ------------------------------------------------------------------------------
+
+.PHONY: check-tools
+check-tools: ## Verify helm, kubectl, jq, yq
+	@command -v helm    >/dev/null 2>&1 || { echo "ERROR: helm not installed";    exit 1; }
+	@command -v kubectl >/dev/null 2>&1 || { echo "ERROR: kubectl not installed"; exit 1; }
+	@command -v yq      >/dev/null 2>&1 || { echo "ERROR: yq not installed";      exit 1; }
+	@echo "Tools OK"
+
+.PHONY: check-env
+check-env: ## Verify cluster reachability
+	@kubectl cluster-info --request-timeout=10s >/dev/null 2>&1 \
+	  || { echo "ERROR: cluster not reachable"; exit 1; }
+	@echo "Cluster OK (namespace=$(NAMESPACE))"
+
+# ------------------------------------------------------------------------------
+# Namespace and secrets
+# ------------------------------------------------------------------------------
+
+.PHONY: namespace
+namespace: check-tools check-env ## Ensure namespace exists
+	@kubectl get ns $(NAMESPACE) >/dev/null 2>&1 \
+	  && echo "Namespace '$(NAMESPACE)' exists" \
+	  || (kubectl create ns $(NAMESPACE) && echo "Namespace '$(NAMESPACE)' created")
+
+.PHONY: secret
+secret: namespace ## Create image pull secret (REGISTRY_USER, REGISTRY_PASS)
+	@[ -n "$(REGISTRY_USER)" ] && [ -n "$(REGISTRY_PASS)" ] \
+	  || { echo "ERROR: REGISTRY_USER and REGISTRY_PASS required"; exit 1; }
+	@kubectl create secret docker-registry $(PULL_SECRET_NAME) \
+	  --namespace $(NAMESPACE) \
+	  --docker-server=$(REGISTRY) \
+	  --docker-username=$(REGISTRY_USER) \
+	  --docker-password=$(REGISTRY_PASS) \
+	  --dry-run=client -o yaml | kubectl apply -f -
+	$(call log,Image pull secret applied)
+
+.PHONY: secret-tls
+secret-tls: namespace ## Create TLS secret from cert/key (TLS_CERT, TLS_KEY)
+	@[ -f "$(TLS_CERT)" ] && [ -f "$(TLS_KEY)" ] \
+	  || { echo "ERROR: TLS_CERT and TLS_KEY must be files"; exit 1; }
+	@kubectl create secret tls $(TLS_SECRET_NAME) \
+	  --namespace $(NAMESPACE) --cert=$(TLS_CERT) --key=$(TLS_KEY) \
+	  --dry-run=client -o yaml | kubectl apply -f -
+	$(call log,TLS secret applied)
+
+# ------------------------------------------------------------------------------
+# Lint / template / dry-run
+# ------------------------------------------------------------------------------
+
+.PHONY: lint
+lint: check-tools ## Lint chart
+	@helm lint $(CHARTS_DIR)/app
+
+.PHONY: template
+template: check-tools ## Render templates without applying
+	@helm template $(RELEASE_APP) $(CHARTS_DIR)/app \
+	  --namespace $(NAMESPACE) $(_vf_app) --debug
+
+.PHONY: dry-run
+dry-run: check-tools check-env namespace ## helm install --dry-run
+	@helm upgrade --install $(RELEASE_APP) $(CHARTS_DIR)/app \
+	  --namespace $(NAMESPACE) $(_vf_app) --dry-run --debug
+
+# ------------------------------------------------------------------------------
+# Deploy / upgrade / rollback
+# ------------------------------------------------------------------------------
+
+.PHONY: deploy-app
+deploy-app: check-tools check-env namespace ## Install/upgrade app chart
+	$(call log,Deploying app)
+	@_t=$$(date +%s); \
+	_status=$$(helm status $(RELEASE_APP) -n $(NAMESPACE) -o json 2>/dev/null \
+	  | yq '.info.status' 2>/dev/null || true); \
+	if echo "$$_status" | grep -qE "^(pending-install|pending-upgrade|failed)$$"; then \
+		echo "  Cleaning stuck release ($$_status)..."; \
+		helm uninstall $(RELEASE_APP) -n $(NAMESPACE) 2>/dev/null || true; \
+	fi; \
+	helm upgrade --install $(RELEASE_APP) $(CHARTS_DIR)/app \
+	  --namespace $(NAMESPACE) $(_vf_app) \
+	  --rollback-on-failure --wait --timeout 10m --cleanup-on-fail; \
+	printf "  app ready  (%ds)\n" $$(($$(date +%s) - _t))
+	$(call log,app deployed)
+
+.PHONY: upgrade-app
+upgrade-app: check-tools check-env ## helm upgrade only (no install fallback)
+	@helm upgrade $(RELEASE_APP) $(CHARTS_DIR)/app \
+	  --namespace $(NAMESPACE) $(_vf_app) \
+	  --rollback-on-failure --wait --timeout 10m --cleanup-on-fail
+	$(call log,app upgraded)
+
+.PHONY: rollback-app
+rollback-app: check-tools check-env ## Roll back app to previous revision
+	@helm rollback $(RELEASE_APP) --namespace $(NAMESPACE) --wait
+	$(call log,app rolled back)
+
+.PHONY: deploy
+deploy: deploy-app ## Deploy full stack
+	@echo "Stack deployed in '$(NAMESPACE)'."
+
+.PHONY: deploy-instance
+deploy-instance: ## Deploy to a named instance namespace (INSTANCE=tenant-a)
+	@[ -n "$(INSTANCE)" ] || { echo "ERROR: INSTANCE required"; exit 1; }
+	$(MAKE) namespace deploy INSTANCE=$(INSTANCE)
+
+# ------------------------------------------------------------------------------
+# Stuck-release recovery (helm-recover / helm-purge)
+# ------------------------------------------------------------------------------
+
+.PHONY: helm-recover
+helm-recover: ## Force-clean stuck pods + rollback (RELEASE=, NS=, REV=, POD_LABEL=)
+	@[ -n "$(RELEASE)" ] && [ -n "$(NS)" ] && [ -n "$(REV)" ] \
+	  || { echo "ERROR: RELEASE, NS, REV required (find via 'helm history $$RELEASE -n $$NS')"; exit 1; }
+	@echo "Scaling Deployments/StatefulSets to 0 to stop pod spawn..."
+	@kubectl get deploy,sts -n $(NS) -l app.kubernetes.io/instance=$(RELEASE) --no-headers 2>/dev/null \
+	  | awk '{print $$1}' | xargs -r -I{} kubectl scale {} -n $(NS) --replicas=0 || true
+	@echo "Force-deleting stuck pods (label $(POD_LABEL))..."
+	@kubectl get pod -n $(NS) -l $(POD_LABEL) --no-headers 2>/dev/null \
+	  | awk '$$3 != "Running" && $$3 != "Completed" {print $$1}' \
+	  | xargs -r -I{} kubectl delete pod {} -n $(NS) --force --grace-period=0 --ignore-not-found || true
+	@echo "Rolling back $(RELEASE) to revision $(REV)..."
+	@helm rollback $(RELEASE) $(REV) -n $(NS) --no-hooks --timeout 3m || true
+	@echo "Done. Run 'helm status $(RELEASE) -n $(NS)' to verify."
+
+.PHONY: helm-purge
+helm-purge: ## Force uninstall + delete PVCs (RELEASE=, NS=)
+	@[ -n "$(RELEASE)" ] && [ -n "$(NS)" ] || { echo "ERROR: RELEASE and NS required"; exit 1; }
+	@echo "WARNING: This deletes the helm release AND its PVCs"
+	@read -p "Type 'purge-$(RELEASE)' to confirm: " confirm; \
+	[ "$$confirm" = "purge-$(RELEASE)" ] || { echo "Cancelled"; exit 1; }
+	@kubectl get pod -n $(NS) -l app.kubernetes.io/instance=$(RELEASE) --no-headers 2>/dev/null \
+	  | awk '$$3 != "Running" && $$3 != "Completed" {print $$1}' \
+	  | xargs -r -I{} kubectl delete pod {} -n $(NS) --force --grace-period=0 --ignore-not-found || true
+	@helm uninstall $(RELEASE) -n $(NS) --wait --timeout 5m --ignore-not-found 2>&1 | tail -3 || true
+	@kubectl get pvc -n $(NS) -l app.kubernetes.io/instance=$(RELEASE) --no-headers 2>/dev/null \
+	  | awk '{print $$1}' | xargs -r -I{} kubectl delete pvc {} -n $(NS) --wait=false --ignore-not-found || true
+	@echo "Purge complete."
+
+# ------------------------------------------------------------------------------
+# Status / logs / uninstall
+# ------------------------------------------------------------------------------
+
+.PHONY: status
+status: check-tools check-env ## Show releases / pods / services / ingresses
+	@echo "=== Helm Releases ($(NAMESPACE)) ==="
+	@helm list --namespace $(NAMESPACE)
+	@echo ""
+	@echo "=== Pods ($(NAMESPACE)) ==="
+	@kubectl get pods --namespace $(NAMESPACE) -o wide
+	@echo ""
+	@echo "=== Services ($(NAMESPACE)) ==="
+	@kubectl get svc --namespace $(NAMESPACE)
+	@echo ""
+	@echo "=== Ingresses ($(NAMESPACE)) ==="
+	@kubectl get ingress --namespace $(NAMESPACE)
+
+.PHONY: logs
+logs: check-tools check-env ## Stream app logs
+	@kubectl logs -f deployment/$(RELEASE_APP) --namespace $(NAMESPACE) --all-containers=true
+
+.PHONY: history
+history: check-tools check-env ## helm history for app
+	@helm history $(RELEASE_APP) --namespace $(NAMESPACE)
+
+.PHONY: uninstall
+uninstall: check-tools check-env ## Remove namespace and ALL its resources (requires confirmation)
+	@echo "WARNING: This will DELETE namespace '$(NAMESPACE)' and EVERYTHING in it"
+	@read -p "Type 'uninstall-$(NAMESPACE)' to confirm: " confirm; \
+	[ "$$confirm" = "uninstall-$(NAMESPACE)" ] || { echo "Cancelled"; exit 1; }
+	@helm uninstall $(RELEASE_APP) --namespace $(NAMESPACE) --wait 2>/dev/null || true
+	@kubectl delete pvc    --all --namespace $(NAMESPACE) 2>/dev/null || true
+	@kubectl delete secret --all --namespace $(NAMESPACE) 2>/dev/null || true
+	@kubectl delete all    --all --namespace $(NAMESPACE) 2>/dev/null || true
+	@kubectl delete namespace $(NAMESPACE) --wait 2>/dev/null || true
+	@echo "Namespace '$(NAMESPACE)' fully removed."
+
+# ------------------------------------------------------------------------------
+# Help
+# ------------------------------------------------------------------------------
+
+.PHONY: help
+help: ## Show this help
+	@echo ""
+	@echo "Helm Deployment"
+	@echo ""
+	@echo "VARIABLES:"
+	@echo "  INSTANCE      Optional named instance (loads envs/<INSTANCE>.env)"
+	@echo "  NAMESPACE     Default: default (or INSTANCE if set)"
+	@echo "  RELEASE_APP   Helm release name (default: app)"
+	@echo ""
+	@echo "TARGETS:"
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
+	  awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
+	@echo ""
+	@echo "EXAMPLES:"
+	@echo "  make deploy"
+	@echo "  make deploy-instance INSTANCE=tenant-a"
+	@echo "  make rollback-app"
+	@echo "  make helm-recover RELEASE=app NS=default REV=3"
+	@echo "  make helm-purge   RELEASE=app NS=default"
+	@echo "  make uninstall"
+	@echo ""

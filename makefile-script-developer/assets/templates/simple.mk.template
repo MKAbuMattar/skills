@@ -1,0 +1,98 @@
+# ==============================================================================
+# Simple Makefile — lint / build / test / clean
+#
+# Drop-in starter for small projects. Replace the variables and target bodies
+# with your actual commands.
+# ==============================================================================
+
+SHELL         := /bin/bash
+.SHELLFLAGS   := -euo pipefail -c
+.DEFAULT_GOAL := help
+.DELETE_ON_ERROR:
+MAKEFLAGS     += --warn-undefined-variables --no-print-directory
+
+# ------------------------------------------------------------------------------
+# Configuration
+# ------------------------------------------------------------------------------
+
+APP_NAME    := myapp
+DIST_DIR    := dist
+SRC_DIR     := src
+TIMESTAMP   := $(shell date +"%Y-%m-%d_%H-%M-%S")
+
+# ------------------------------------------------------------------------------
+# Pre-flight
+# ------------------------------------------------------------------------------
+
+.PHONY: check-tools
+check-tools: ## Verify required tools are installed
+	@command -v go     >/dev/null 2>&1 || { echo "ERROR: go not installed";    exit 1; }
+	@command -v golangci-lint >/dev/null 2>&1 || { echo "ERROR: golangci-lint missing"; exit 1; }
+	@echo "Tools OK"
+
+# ------------------------------------------------------------------------------
+# Lint / build / test
+# ------------------------------------------------------------------------------
+
+.PHONY: lint
+lint: check-tools ## Run linter
+	golangci-lint run ./...
+
+.PHONY: build
+build: check-tools ## Compile the application
+	@mkdir -p $(DIST_DIR)
+	go build -o $(DIST_DIR)/$(APP_NAME) ./$(SRC_DIR)
+	@echo "Built: $(DIST_DIR)/$(APP_NAME)"
+
+.PHONY: test
+test: check-tools ## Run tests with coverage
+	go test -race -coverprofile=coverage.out ./...
+	@echo "Coverage: $$(go tool cover -func=coverage.out | tail -1 | awk '{print $$3}')"
+
+.PHONY: bench
+bench: check-tools ## Run benchmarks
+	go test -bench=. -benchmem -run=^$$ ./...
+
+.PHONY: clean
+clean: ## Remove build artifacts
+	rm -rf $(DIST_DIR) coverage.out
+	@echo "Cleaned"
+
+# ------------------------------------------------------------------------------
+# Install / uninstall
+# ------------------------------------------------------------------------------
+
+.PHONY: install
+install: build ## Install binary to /usr/local/bin
+	install -m 755 $(DIST_DIR)/$(APP_NAME) /usr/local/bin/$(APP_NAME)
+	@echo "Installed to /usr/local/bin/$(APP_NAME)"
+
+.PHONY: uninstall
+uninstall: ## Remove from /usr/local/bin (CI=true to skip prompt)
+	@[ "$(CI)" = "true" ] || { \
+		read -p "Type 'uninstall-$(APP_NAME)' to confirm: " confirm; \
+		[ "$$confirm" = "uninstall-$(APP_NAME)" ] || { echo "Cancelled"; exit 1; }; \
+	}
+	rm -f /usr/local/bin/$(APP_NAME)
+	@echo "Uninstalled"
+
+# ------------------------------------------------------------------------------
+# Workflow
+# ------------------------------------------------------------------------------
+
+.PHONY: ci
+ci: lint test build ## Full CI pipeline (lint + test + build)
+	@echo "CI passed"
+
+# ------------------------------------------------------------------------------
+# Help
+# ------------------------------------------------------------------------------
+
+.PHONY: help
+help: ## Show this help
+	@echo ""
+	@echo "  $(APP_NAME) — Build automation"
+	@echo "  ─────────────────────────────"
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
+	  awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
+	@echo ""
