@@ -1,0 +1,40 @@
+module.exports = {
+  extends: ["@commitlint/config-conventional"],
+  rules: {
+    "type-enum": [
+      2,
+      "always",
+      [
+        "feat",
+        "fix",
+        "perf",
+        "refactor",
+        "docs",
+        "test",
+        "build",
+        "ci",
+        "chore",
+        "revert",
+        "style",
+      ],
+    ],
+    "scope-enum": [2, "always", ["api", "auth", "db", "deps", "infra"]],
+    "header-max-length": [2, "always", 100],
+    "subject-case": [
+      2,
+      "never",
+      ["sentence-case", "start-case", "pascal-case", "upper-case"],
+    ],
+    "subject-empty": [2, "never"],
+    "subject-full-stop": [2, "never", "."],
+    "body-leading-blank": [2, "always"],
+    "body-max-line-length": [2, "always", 100],
+    "footer-leading-blank": [2, "always"],
+    "footer-max-line-length": [2, "always", 100],
+  },
+  ignores: [
+    (msg) => msg.startsWith("Merge "),
+    (msg) => msg.startsWith("Revert "),
+    (msg) => msg.includes("[skip ci]"),
+  ],
+};

@@ -1,0 +1,413 @@
+// =============================================================================
+// Jenkinsfile — GitOps Release Pipeline
+//   Conventional Commits → SemVer auto-bump → SonarQube → Build →
+//   Grype → Push → Cosign sign → GitOps update → Score & Alignments
+//
+// Replace placeholders inside `environment {}`. Everything else is generic.
+// =============================================================================
+
+pipeline {
+    agent {
+        kubernetes {
+            yaml """
+apiVersion: v1
+kind: Pod
+spec:
+  serviceAccountName: jenkins
+  containers:
+    - name: jnlp
+      image: jenkins/inbound-agent:latest
+      resources: { requests: { cpu: 100m, memory: 256Mi }, limits: { cpu: 500m, memory: 512Mi } }
+    # Rootless BuildKit — never run docker:dind privileged.
+    - name: buildkit
+      image: moby/buildkit:rootless
+      args: [--addr, unix:///run/user/1000/buildkit/buildkitd.sock,
+             --addr, tcp://0.0.0.0:1234,
+             --oci-worker-no-process-sandbox]
+      securityContext:
+        seccompProfile: { type: Unconfined }
+        runAsUser: 1000
+        runAsGroup: 1000
+      readinessProbe:
+        exec: { command: [buildctl, debug, workers] }
+        initialDelaySeconds: 10
+        periodSeconds: 15
+      resources: { requests: { cpu: 500m, memory: 1Gi }, limits: { cpu: 2, memory: 4Gi } }
+    # Tools: kubectl + helm + git + jq + yq + ssh + curl. Layer buildctl,
+    # skopeo, syft, grype, cosign, sonar-scanner on top via the Setup Tools stage.
+    - name: tools
+      image: alpine/k8s:latest
+      command: [sleep]
+      args: [infinity]
+      env:
+        - { name: BUILDKIT_HOST, value: tcp://127.0.0.1:1234 }
+        - { name: DOCKER_CONFIG, value: /tmp/docker-config }
+      volumeMounts:
+        - { name: ssh-key,       mountPath: /root/.ssh-mount, readOnly: true }
+        - { name: docker-config, mountPath: /tmp/docker-config, readOnly: true }
+        - { name: vault-token,   mountPath: /var/run/secrets/vault, readOnly: true }
+      resources: { requests: { cpu: 200m, memory: 256Mi }, limits: { cpu: 1, memory: 1Gi } }
+  volumes:
+    - { name: docker-config, secret: { secretName: registry-credentials } }
+    - { name: ssh-key,       secret: { secretName: git-ssh-key, defaultMode: 0400 } }
+    - name: vault-token
+      projected:
+        sources:
+          - serviceAccountToken: { path: token, audience: vault, expirationSeconds: 600 }
+"""
+        }
+    }
+
+    parameters {
+        // BUMP is computed automatically from commits when omitted; allow override only
+        // for force-pushes or recovery scenarios.
+        choice(name: 'BUMP', choices: ['auto', 'patch', 'minor', 'major'],
+               description: 'SemVer bump (auto = derive from Conventional Commits)')
+        choice(name: 'CHANNEL', choices: ['auto', 'release', 'rc', 'beta', 'alpha', 'hotfix'],
+               description: 'Release channel (auto = derive from branch)')
+        // Image security level. 'auto' (default) derives from the branch:
+        //   main / release/* / hotfix/*  → sign-and-encrypt
+        //   develop                       → sign-only
+        //   feature/*                     → none
+        // See references/security-levels.md.
+        choice(name: 'SECURITY_LEVEL',
+               choices: ['auto', 'none', 'sign-only', 'encrypt-only', 'sign-and-encrypt'],
+               description: 'Image security level — auto derives from branch (Gitflow-aware).')
+        booleanParam(name: 'SKIP_SCAN', defaultValue: false,
+                     description: 'Skip Sonar + Grype (debugging only — fails the score gate)')
+    }
+
+    environment {
+        // ── Repo / image ─────────────────────────────────────────────
+        REGISTRY     = '<registry-host>'                     // e.g. ghcr.io / your-registry
+        IMAGE_ORG    = '<org>'
+        IMAGE_NAME   = '<service-name>'
+        FULL_IMAGE   = "${REGISTRY}/${IMAGE_ORG}/${IMAGE_NAME}"
+
+        // ── GitOps target (chart / manifests repo) ───────────────────
+        CHART_REPO    = 'git@github.com:<org>/<chart-repo>.git'
+        CHART_BRANCH  = 'main'
+        VALUES_FILE   = 'values.yaml'
+        VALUES_KEY    = '.image'
+
+        // ── Cosign / signing ─────────────────────────────────────────
+        COSIGN_KEY_REF      = 'hashivault://cosign-key'        // or awskms://, gcpkms://
+        COSIGN_REPOSITORY   = "${REGISTRY}/${IMAGE_ORG}/signatures"
+        VAULT_ADDR          = 'http://vault.vault.svc.cluster.local:8200'
+        VAULT_ROLE          = 'jenkins-signer'
+
+        // ── Score gate ────────────────────────────────────────────────
+        SCORE_THRESHOLD = '70'
+        GRYPE_FAIL_ON   = 'high'
+    }
+
+    stages {
+        stage('Setup Tools') {
+            steps { container('tools') { sh '''
+                set -eu
+                apk add --no-cache buildctl skopeo tar coreutils git openssh-client jq yq curl bash || true
+                # Pin the auxiliary binaries that aren't in alpine repos.
+                if ! command -v cosign >/dev/null;        then curl -fsSL -o /usr/local/bin/cosign https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64 && chmod +x /usr/local/bin/cosign; fi
+                if ! command -v grype >/dev/null;         then curl -fsSL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin; fi
+                if ! command -v syft >/dev/null;          then curl -fsSL https://raw.githubusercontent.com/anchore/syft/main/install.sh  | sh -s -- -b /usr/local/bin; fi
+                if ! command -v sonar-scanner >/dev/null; then apk add --no-cache openjdk17-jre && curl -fsSL -o /tmp/ss.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006-linux.zip && unzip -q /tmp/ss.zip -d /opt && ln -s /opt/sonar-scanner-*/bin/sonar-scanner /usr/local/bin/sonar-scanner; fi
+                if ! command -v commitlint >/dev/null;    then npm i -g @commitlint/cli @commitlint/config-conventional || true; fi
+                # Workspace shared with the rootless buildkit sidecar.
+                chmod 0777 "${WORKSPACE}"
+            ''' } }
+        }
+
+        // ─────────────────────────────────────────────────────────────
+        stage('Lint Commits') {
+            steps { container('tools') { sh '''
+                set -e
+                LAST_TAG="$(git describe --tags --abbrev=0 2>/dev/null || git rev-list --max-parents=0 HEAD)"
+                echo "Linting commits from ${LAST_TAG} → HEAD"
+                commitlint --from "${LAST_TAG}" --to HEAD
+            ''' } }
+        }
+
+        // ─────────────────────────────────────────────────────────────
+        stage('Compute Version') {
+            steps { container('tools') { script {
+                env.CURRENT_STAGE = 'Compute Version'
+                // Use semantic-release in dry-run mode to derive the next version
+                // from commit history. Falls back to bumping VERSION manually if
+                // semantic-release isn't configured.
+                def ver = sh(returnStdout: true, script: '''
+                    if [ -f .releaserc.json ] || [ -f .releaserc ]; then
+                        npx --no-install semantic-release --dry-run 2>/dev/null \
+                          | sed -n 's/.*next release version is \\(.*\\)/\\1/p' \
+                          | tail -1
+                    elif [ -f VERSION ]; then
+                        cat VERSION
+                    else
+                        echo "0.0.0"
+                    fi
+                ''').trim()
+                if (!ver) { ver = readFile('VERSION').trim() }
+
+                def shortSha = (env.GIT_COMMIT ?: 'unknown').take(7)
+                def isRelease = (env.BRANCH_NAME == 'main')
+                if (!isRelease && !ver.contains('+')) { ver = "${ver}+${shortSha}" }
+
+                env.VERSION       = ver
+                env.IS_RELEASE    = isRelease ? 'true' : 'false'
+                currentBuild.displayName = "#${BUILD_NUMBER} v${env.VERSION}"
+                echo "Version: ${env.VERSION}  (release=${env.IS_RELEASE})"
+            } } }
+        }
+
+        // ─────────────────────────────────────────────────────────────
+        // Resolve the security level from params.SECURITY_LEVEL (default 'auto').
+        // Sets env.SECURITY_LEVEL, env.IMG_DO_ENCRYPT, env.IMG_DO_SIGN.
+        // See references/security-levels.md.
+        stage('Resolve Security Level') {
+            steps { script {
+                def requested = params.SECURITY_LEVEL ?: 'auto'
+                def lvl
+                if (requested == 'auto') {
+                    def b = env.BRANCH_NAME ?: ''
+                    if      (b == 'main')             lvl = 'sign-and-encrypt'
+                    else if (b.startsWith('release/')) lvl = 'sign-and-encrypt'
+                    else if (b.startsWith('hotfix/'))  lvl = 'sign-and-encrypt'
+                    else if (b == 'develop')          lvl = 'sign-only'
+                    else if (b.startsWith('feature/')) lvl = 'none'
+                    else                              lvl = 'sign-only'
+                    echo "Security level (auto, branch=${b}): ${lvl}"
+                } else {
+                    lvl = requested
+                    echo "Security level (override): ${lvl}"
+                }
+                env.SECURITY_LEVEL = lvl
+                env.IMG_DO_ENCRYPT = (lvl == 'encrypt-only' || lvl == 'sign-and-encrypt') ? 'true' : 'false'
+                env.IMG_DO_SIGN    = (lvl == 'sign-only'    || lvl == 'sign-and-encrypt') ? 'true' : 'false'
+            } }
+        }
+
+        // ─────────────────────────────────────────────────────────────
+        stage('Lint & Test') {
+            steps { container('tools') { sh '''
+                set -e
+                # Detect the package manager and run the project's test command.
+                if   [ -f pnpm-lock.yaml ];      then pnpm install --frozen-lockfile && pnpm test
+                elif [ -f bun.lock ] || [ -f bun.lockb ]; then bun install --frozen-lockfile && bun test
+                elif [ -f yarn.lock ];           then yarn install --frozen-lockfile && yarn test
+                elif [ -f package-lock.json ];   then npm ci && npm test
+                elif [ -f uv.lock ];             then uv sync --frozen && uv run pytest
+                elif [ -f poetry.lock ];         then poetry install --no-root && poetry run pytest
+                elif [ -f pdm.lock ];            then pdm install --frozen-lockfile && pdm run pytest
+                elif [ -f Pipfile.lock ];        then pipenv sync --dev && pipenv run pytest
+                elif [ -f go.sum ];              then go test -coverprofile=coverage.out ./...
+                elif [ -f Cargo.lock ];          then cargo test
+                elif [ -f Gemfile.lock ];        then bundle install && bundle exec rspec
+                else echo "No recognised lockfile — skipping test stage" ; fi
+            ''' } }
+        }
+
+        // ─────────────────────────────────────────────────────────────
+        stage('SonarQube Scan') {
+            when { expression { !params.SKIP_SCAN } }
+            steps {
+                withSonarQubeEnv('sonarqube-server') {
+                    container('tools') { sh """
+                        sonar-scanner \\
+                            -Dsonar.projectVersion=${env.VERSION} \\
+                            -Dsonar.pullrequest.key=${env.CHANGE_ID ?: ''} \\
+                            -Dsonar.pullrequest.branch=${env.CHANGE_BRANCH ?: ''} \\
+                            -Dsonar.pullrequest.base=${env.CHANGE_TARGET ?: ''}
+                    """ }
+                }
+                timeout(time: 10, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+                container('tools') { sh '''
+                    # Save the gate result for the scorecard.
+                    curl -sS -u "${SONAR_AUTH_TOKEN}:" \
+                        "${SONAR_HOST_URL}/api/qualitygates/project_status?projectKey=$(grep -oE '^sonar.projectKey=.*' sonar-project.properties | cut -d= -f2)" \
+                        > sonar-report.json
+                ''' }
+            }
+        }
+
+        // ─────────────────────────────────────────────────────────────
+        stage('Build Image (BuildKit)') {
+            steps { container('tools') { sh """
+                set -eo pipefail
+                rm -rf "\${WORKSPACE}/oci-out" "\${WORKSPACE}/image.oci"
+                buildctl build \\
+                    --frontend dockerfile.v0 \\
+                    --local context=. \\
+                    --local dockerfile=. \\
+                    --opt platform=linux/amd64 \\
+                    --output type=oci,dest=\${WORKSPACE}/image.oci,name=${env.FULL_IMAGE}:${env.VERSION}
+                mkdir -p \${WORKSPACE}/oci-out
+                tar -xf \${WORKSPACE}/image.oci -C \${WORKSPACE}/oci-out
+            """ } }
+        }
+
+        // ─────────────────────────────────────────────────────────────
+        stage('Generate SBOM (Syft) + Scan Image (Grype)') {
+            when { expression { !params.SKIP_SCAN } }
+            steps { container('tools') { sh """
+                set -e
+                syft "oci-archive:\${WORKSPACE}/image.oci" \\
+                    -o cyclonedx-json=sbom.cdx.json \\
+                    -o table
+
+                grype "sbom:./sbom.cdx.json" \\
+                    -c grype.yaml \\
+                    --fail-on ${env.GRYPE_FAIL_ON} \\
+                    -o json=grype-report.json \\
+                    -o table
+            """ }
+                archiveArtifacts artifacts: 'sbom.cdx.json,grype-report.json', fingerprint: true
+            }
+        }
+
+        // ─────────────────────────────────────────────────────────────
+        // Encrypt OCI layers with a JWE public key fetched from Vault KV.
+        // Skipped unless SECURITY_LEVEL ∈ { encrypt-only, sign-and-encrypt }.
+        stage('Encrypt Image') {
+            when { expression { env.IMG_DO_ENCRYPT == 'true' } }
+            steps { container('tools') { sh """
+                set -eo pipefail
+                # Vault K8s-auth → short-lived token
+                JWT=\$(cat /var/run/secrets/vault/token)
+                VAULT_TOKEN=\$(curl -sS --fail \\
+                    --request POST \\
+                    --data '{"role":"${env.VAULT_ROLE}","jwt":"'"\$JWT"'"}' \\
+                    ${env.VAULT_ADDR}/v1/auth/kubernetes/login \\
+                    | jq -r '.auth.client_token')
+
+                # Pick env segment for enc-key lookup.
+                ENC_ENV=\$([ "${env.IS_RELEASE}" = "true" ] && echo prod || echo dev)
+
+                curl -sS --fail \\
+                    -H "X-Vault-Token: \$VAULT_TOKEN" \\
+                    ${env.VAULT_ADDR}/v1/secret/data/enc-keys/\$ENC_ENV \\
+                    | jq -r '.data.data.public' > "\${WORKSPACE}/pub.pem"
+                grep -q 'BEGIN PUBLIC KEY' "\${WORKSPACE}/pub.pem" \\
+                    || { echo "ERROR: invalid enc-key for env=\$ENC_ENV"; exit 1; }
+
+                rm -rf "\${WORKSPACE}/encrypted-oci"
+                skopeo copy --encryption-key "jwe:\${WORKSPACE}/pub.pem" \\
+                    "oci:\${WORKSPACE}/oci-out" \\
+                    "oci:\${WORKSPACE}/encrypted-oci"
+
+                # Wipe plaintext immediately.
+                rm -rf "\${WORKSPACE}/oci-out" "\${WORKSPACE}/pub.pem"
+                unset VAULT_TOKEN
+                echo "Encrypt: layers ready (env=\$ENC_ENV)"
+            """ } }
+        }
+
+        // ─────────────────────────────────────────────────────────────
+        // Push from whichever directory the previous stages produced.
+        // Plain images push as v2s2; encrypted as OCI (no --format).
+        stage('Push Image') {
+            steps { container('tools') { sh """
+                set -e
+                if [ "${env.IMG_DO_ENCRYPT}" = "true" ]; then
+                    SRC="oci:\${WORKSPACE}/encrypted-oci"
+                    FMT=""
+                else
+                    SRC="oci:\${WORKSPACE}/oci-out"
+                    FMT="--format v2s2"
+                fi
+
+                skopeo copy \$FMT \\
+                    --authfile /tmp/docker-config/config.json \\
+                    "\$SRC" \\
+                    "docker://${env.FULL_IMAGE}:${env.VERSION}"
+
+                if [ "${env.IS_RELEASE}" = "true" ]; then
+                    skopeo copy \$FMT \\
+                        --authfile /tmp/docker-config/config.json \\
+                        "\$SRC" \\
+                        "docker://${env.FULL_IMAGE}:latest"
+                fi
+
+                DIGEST=\$(skopeo inspect --authfile /tmp/docker-config/config.json \\
+                    --raw "docker://${env.FULL_IMAGE}:${env.VERSION}" | sha256sum | awk '{print "sha256:"\$1}')
+                echo "\$DIGEST" > image.digest
+                echo "Pushed digest: \$DIGEST"
+            """ } }
+        }
+
+        // ─────────────────────────────────────────────────────────────
+        // Skipped unless SECURITY_LEVEL ∈ { sign-only, sign-and-encrypt }.
+        stage('Sign Image (Cosign)') {
+            when { expression { env.IMG_DO_SIGN == 'true' } }
+            steps { container('tools') { sh """
+                set -e
+                # Vault K8s-auth token exchange.
+                JWT=\$(cat /var/run/secrets/vault/token)
+                VAULT_TOKEN=\$(curl -sS --fail \\
+                    --request POST \\
+                    --data '{"role":"${env.VAULT_ROLE}","jwt":"'"\$JWT"'"}' \\
+                    ${env.VAULT_ADDR}/v1/auth/kubernetes/login \\
+                    | jq -r '.auth.client_token')
+                export VAULT_TOKEN VAULT_ADDR=${env.VAULT_ADDR}
+                export COSIGN_REPOSITORY=${env.COSIGN_REPOSITORY}
+                export DOCKER_CONFIG=/tmp/docker-config
+
+                DIGEST=\$(cat image.digest)
+                cosign sign --yes --key ${env.COSIGN_KEY_REF} ${env.FULL_IMAGE}@\$DIGEST
+
+                # Attest the SBOM alongside the signature.
+                cosign attest --yes \\
+                    --predicate sbom.cdx.json --type cyclonedx \\
+                    --key ${env.COSIGN_KEY_REF} \\
+                    ${env.FULL_IMAGE}@\$DIGEST
+                unset VAULT_TOKEN
+            """ } }
+        }
+
+        // ─────────────────────────────────────────────────────────────
+        stage('GitOps Update') {
+            steps { container('tools') { sh """
+                set -e
+                mkdir -p /root/.ssh && cp /root/.ssh-mount/id_rsa /root/.ssh/id_rsa && chmod 600 /root/.ssh/id_rsa
+                ssh-keyscan -H github.com bitbucket.org gitlab.com >> /root/.ssh/known_hosts 2>/dev/null
+                git config --global user.email 'jenkins-bot@example.com'
+                git config --global user.name 'Jenkins CI'
+
+                rm -rf /tmp/chart && git clone -b ${env.CHART_BRANCH} ${env.CHART_REPO} /tmp/chart
+                cd /tmp/chart
+                DIGEST=\$(cat \${WORKSPACE}/image.digest)
+                yq -i '
+                    .image.repository = "${env.FULL_IMAGE}" |
+                    .image.tag        = "${env.VERSION}" |
+                    .image.digest     = "'\$DIGEST'"
+                ' ${env.VALUES_FILE}
+
+                git add ${env.VALUES_FILE}
+                git diff --cached --quiet && echo "No GitOps changes" || {
+                    git commit -m 'deploy: ${env.IMAGE_NAME} ${env.VERSION}@'\$DIGEST' [skip ci]'
+                    git push origin ${env.CHART_BRANCH}
+                }
+            """ } }
+        }
+
+        // ─────────────────────────────────────────────────────────────
+        stage('Score & Alignments') {
+            steps { container('tools') {
+                sh "bash scripts/compute-score.sh sonar-report.json grype-report.json"
+                archiveArtifacts artifacts: 'score.json,scorecard.md', fingerprint: true
+                script {
+                    def s = readJSON file: 'score.json'
+                    echo "Score: ${s.aggregate}/100  Alignments failing: ${s.alignments_failed}"
+                    if (s.aggregate < (env.SCORE_THRESHOLD as Integer) || s.alignments_failed > 0) {
+                        error("Score gate failed — see scorecard.md")
+                    }
+                }
+            } }
+        }
+    }
+
+    post {
+        success { echo "RELEASE OK: ${env.FULL_IMAGE}:${env.VERSION}" }
+        failure { echo "FAILED at stage: ${env.CURRENT_STAGE ?: 'unknown'}" }
+    }
+}

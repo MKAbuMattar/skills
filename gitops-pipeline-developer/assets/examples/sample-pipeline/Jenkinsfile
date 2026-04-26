@@ -1,0 +1,89 @@
+// =============================================================================
+// Jenkinsfile — acme-api (worked example)
+// Copy of assets/templates/Jenkinsfile.template with the environment block
+// filled in for a small Node/TypeScript service hosted on GitHub + ghcr.io.
+//
+// All other stages are unchanged from the template — see comments there for
+// rationale.
+// =============================================================================
+
+pipeline {
+    agent {
+        kubernetes {
+            yaml """
+apiVersion: v1
+kind: Pod
+spec:
+  serviceAccountName: jenkins
+  containers:
+    - name: jnlp
+      image: jenkins/inbound-agent:latest
+    - name: buildkit
+      image: moby/buildkit:rootless
+      args: [--addr, unix:///run/user/1000/buildkit/buildkitd.sock,
+             --addr, tcp://0.0.0.0:1234,
+             --oci-worker-no-process-sandbox]
+      securityContext: { runAsUser: 1000, runAsGroup: 1000, seccompProfile: { type: Unconfined } }
+      readinessProbe: { exec: { command: [buildctl, debug, workers] }, initialDelaySeconds: 10 }
+    - name: tools
+      image: alpine/k8s:latest
+      command: [sleep]
+      args: [infinity]
+      env:
+        - { name: BUILDKIT_HOST, value: tcp://127.0.0.1:1234 }
+        - { name: DOCKER_CONFIG, value: /tmp/docker-config }
+      volumeMounts:
+        - { name: ssh-key,       mountPath: /root/.ssh-mount, readOnly: true }
+        - { name: docker-config, mountPath: /tmp/docker-config, readOnly: true }
+        - { name: vault-token,   mountPath: /var/run/secrets/vault, readOnly: true }
+  volumes:
+    - { name: docker-config, secret: { secretName: ghcr-credentials } }
+    - { name: ssh-key,       secret: { secretName: github-ssh-key, defaultMode: 0400 } }
+    - { name: vault-token,
+        projected: { sources: [{ serviceAccountToken: { path: token, audience: vault, expirationSeconds: 600 } }] } }
+"""
+        }
+    }
+
+    parameters {
+        choice(name: 'BUMP', choices: ['auto', 'patch', 'minor', 'major'], description: 'SemVer bump (auto = derive from commits)')
+        choice(name: 'CHANNEL', choices: ['auto', 'release', 'rc', 'beta', 'alpha'], description: 'Release channel (auto = derive from branch)')
+        booleanParam(name: 'SKIP_SCAN', defaultValue: false, description: 'Skip Sonar + Grype (debug only)')
+    }
+
+    environment {
+        REGISTRY            = 'ghcr.io'
+        IMAGE_ORG           = 'acme'
+        IMAGE_NAME          = 'api'
+        FULL_IMAGE          = "${REGISTRY}/${IMAGE_ORG}/${IMAGE_NAME}"
+        CHART_REPO          = 'git@github.com:acme/charts.git'
+        CHART_BRANCH        = 'main'
+        VALUES_FILE         = 'envs/${CHANNEL}/values.yaml'
+        VALUES_KEY          = '.image'
+        COSIGN_KEY_REF      = 'hashivault://cosign-key'
+        COSIGN_REPOSITORY   = "${REGISTRY}/${IMAGE_ORG}/signatures"
+        VAULT_ADDR          = 'http://vault.vault.svc.cluster.local:8200'
+        VAULT_ROLE          = 'jenkins-signer'
+        SCORE_THRESHOLD     = '70'
+        GRYPE_FAIL_ON       = 'high'
+    }
+
+    stages {
+        stage('Setup Tools')         { steps { /* see template */ echo 'see Jenkinsfile.template' } }
+        stage('Lint Commits')        { steps { /* see template */ echo 'commitlint --from <last-tag> --to HEAD' } }
+        stage('Compute Version')     { steps { /* see template */ echo 'semantic-release --dry-run + short-SHA suffix' } }
+        stage('Lint & Test')         { steps { /* see template */ echo 'pnpm install --frozen-lockfile && pnpm test' } }
+        stage('SonarQube Scan')      { when { expression { !params.SKIP_SCAN } }; steps { echo 'sonar-scanner + waitForQualityGate' } }
+        stage('Build Image')         { steps { /* see template */ echo 'buildctl build → oci-archive' } }
+        stage('SBOM + Grype')        { when { expression { !params.SKIP_SCAN } }; steps { echo 'syft + grype --fail-on high' } }
+        stage('Push Image')          { steps { /* see template */ echo 'skopeo copy → ghcr.io' } }
+        stage('Sign Image')          { steps { /* see template */ echo 'cosign sign --key hashivault://cosign-key' } }
+        stage('GitOps Update')       { steps { /* see template */ echo 'yq -i envs/${CHANNEL}/values.yaml + push' } }
+        stage('Score & Alignments')  { steps { /* see template */ echo 'bash scripts/compute-score.sh sonar-report.json grype-report.json' } }
+    }
+
+    post {
+        success { echo "RELEASE OK: ${env.FULL_IMAGE}:${env.VERSION}" }
+        failure { echo "FAILED at stage: ${env.CURRENT_STAGE ?: 'unknown'}" }
+    }
+}

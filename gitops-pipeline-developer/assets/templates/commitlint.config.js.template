@@ -1,0 +1,62 @@
+// commitlint.config.js — Conventional Commits enforcement
+//
+// Usage (CI gate):    npx --no-install commitlint --from <last-tag> --to HEAD
+// Usage (Husky):      .husky/commit-msg → npx --no-install commitlint --edit "$1"
+//
+// Drop into the repo root, install deps:
+//     pnpm add -D @commitlint/cli @commitlint/config-conventional husky
+//     yarn add -D @commitlint/cli @commitlint/config-conventional husky
+//     bun  add -d @commitlint/cli @commitlint/config-conventional husky
+//     npm  i  -D @commitlint/cli @commitlint/config-conventional husky
+//
+// Then: npx husky init && echo 'npx --no-install commitlint --edit "$1"' > .husky/commit-msg
+
+module.exports = {
+  extends: ['@commitlint/config-conventional'],
+  rules: {
+    // Levels: 0 = disabled, 1 = warning, 2 = error.
+    'type-enum': [
+      2,
+      'always',
+      [
+        'feat',     // new feature                 → minor SemVer
+        'fix',      // bug fix                     → patch
+        'perf',     // performance improvement     → patch
+        'refactor', // internal restructure        → none
+        'docs',     // documentation only          → none
+        'test',     // tests only                  → none
+        'build',    // build system / deps         → none
+        'ci',       // CI config                   → none
+        'chore',    // housekeeping                → none
+        'revert',   // reverts                     → depends on reverted commit
+        'style',    // formatting, whitespace      → none
+        // Add 'security' here only if you also add it to .releaserc.json
+        // releaseRules with the SemVer effect you want it to trigger.
+      ],
+    ],
+
+    // Header (the first line) — keep it scannable.
+    'header-max-length': [2, 'always', 100],
+    'subject-case': [2, 'never', ['sentence-case', 'start-case', 'pascal-case', 'upper-case']],
+    'subject-empty': [2, 'never'],
+    'subject-full-stop': [2, 'never', '.'],
+
+    // Body / footer — wrap at 100, blank line before footer.
+    'body-leading-blank': [2, 'always'],
+    'body-max-line-length': [2, 'always', 100],
+    'footer-leading-blank': [2, 'always'],
+    'footer-max-line-length': [2, 'always', 100],
+
+    // Scope is optional. Tighten by un-commenting `scope-enum` once the
+    // repo has stable module boundaries.
+    // 'scope-enum': [2, 'always', ['api', 'web', 'auth', 'db', 'deps', 'infra']],
+  },
+
+  // Anything matching these patterns is allowed without commitlint enforcement.
+  // Useful for bot-pushed merge commits that don't follow CC.
+  ignores: [
+    (msg) => msg.startsWith('Merge '),
+    (msg) => msg.startsWith('Revert '),
+    (msg) => msg.includes('[skip ci]'),
+  ],
+};
