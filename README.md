@@ -42,6 +42,14 @@ Tools for building more skills.
   npx skills@latest add MKAbuMattar/skills/qa
   ```
 
+## Planning & Architecture
+
+- **information-architecture** — Plan the structural and execution architecture of a feature, app, or site. Produces both an `INFORMATION_ARCHITECTURE.md` (sitemap, navigation, content hierarchy, user flows, URL strategy, naming conventions, component reuse map) **and** a phased `PLAN.md` (phases by impact × effort × risk, vertical-slice tasks with sub-tasks, dependencies, estimates, and a detailed task breakdown with Why · How · Impact · Effort). Includes a discovery checklist, phasing guide, task-slicing rules, both templates, and a fully-worked example.
+
+  ```
+  npx skills@latest add MKAbuMattar/skills/information-architecture
+  ```
+
 ## Manual install
 
 If you prefer not to use the `skills` CLI, clone and symlink:
@@ -54,6 +62,7 @@ ln -s "$PWD/skills/python-script-developer"   ~/.claude/skills/
 ln -s "$PWD/skills/makefile-script-developer" ~/.claude/skills/
 ln -s "$PWD/skills/skill-builder"             ~/.claude/skills/
 ln -s "$PWD/skills/qa"                        ~/.claude/skills/
+ln -s "$PWD/skills/information-architecture"  ~/.claude/skills/
 ```
 
 For other clients, see each tool's skill discovery path in the [client showcase](https://agentskills.io/clients).
