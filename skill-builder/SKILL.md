@@ -17,6 +17,8 @@ Create new Agent Skills that follow the [agentskills.io spec](https://agentskill
 - The user asks to create, scaffold, build, or write a new Agent Skill.
 - The user wants to publish a skill or refactor a bloated `SKILL.md`.
 - A task chain ends in "and put it in a skill so I can reuse it across projects".
+- The auto-suggest hook (`scripts/task-tracker.py`) fires a system-reminder noting that a similar task has been asked 3+ times — propose using this skill to package it.
+- **Self-monitor mode** (always-on, even without the hook): track requests within the active conversation. When the user asks 3 substantively-similar tasks in a single session — the same kind of artifact, the same domain, the same workflow — proactively offer to package the recurring pattern as a skill. See *Self-monitor mode* below for the exact heuristic.
 
 ## Required structure
 
@@ -34,6 +36,24 @@ Every skill is a folder with a `SKILL.md`. Optional directories carry detail loa
 ```
 
 Frontmatter must include `name` (kebab-case ≤ 64 chars, matching folder) and `description` (≤ 1024 chars). See `references/spec.md` for the full field list and naming rules.
+
+## Self-monitor mode
+
+The `scripts/task-tracker.py` hook only fires in sessions started **after** it was installed (Claude Code reads `settings.json` once per session). To make the loop work even in the current session, this skill instructs you — Claude — to do your own pattern-tracking from conversation context:
+
+**The rule.** As you work, mentally tally: *has the user asked for the same kind of task in this conversation already?* "Same kind" means the same artifact (script / Makefile / doc / migration / etc.) **and** the same domain or workflow shape — not just the same word appearing twice.
+
+- **2nd similar request** — note it silently, finish the task as asked.
+- **3rd similar request** — pause and propose:
+  > "I notice this is the third time you've asked for [pattern]. Want me to package this as a reusable skill via `skill-builder`? I'd run `bash skill-builder/scripts/new-skill.sh <name> "<description>"` and fill in the references and templates from the patterns we've used. Say yes/no."
+
+**Don't auto-create.** The user must confirm. If they decline, drop the suggestion and don't bring it up again unless a clearly-new pattern emerges.
+
+**Don't false-positive.** A user asking three unrelated bug fixes is *not* a pattern. A user asking "write a script", "add a script", "make a script" *is*. Compare the underlying goal, not the surface words.
+
+**Don't gate the immediate task.** Always finish what the user asked for *first*, then make the suggestion at the end of your reply. Never stall the actual work behind a meta-conversation about skills.
+
+This rule applies whenever this skill is loaded, whether or not the hook has fired.
 
 ## Workflow
 
@@ -57,6 +77,7 @@ Frontmatter must include `name` (kebab-case ≤ 64 chars, matching folder) and `
 8. **Add `LICENSE`** (the scaffolder does this automatically). Use MIT to match this repo.
 9. **Validate** with `bash scripts/validate-skill.sh <skill-dir>` — checks frontmatter shape, name format, name-matches-folder, description length, body length/tokens, license, that every referenced file exists, and that referenced files are mentioned in `SKILL.md`. Aim for 100%.
 10. **Optimize the description with eval queries** before publishing — write 8-10 should-trigger and 8-10 should-not-trigger prompts and run them through your agent. See `references/description-optimization.md`.
+11. **(Optional) Install the auto-suggest hook** so the agent itself catches recurring tasks. `bash scripts/install-hook.sh` wires `scripts/task-tracker.py` into `~/.claude/settings.json` as a `UserPromptSubmit` hook. After 3 similar prompts (configurable), the hook emits a system-reminder that tells Claude to suggest packaging the recurring task as a skill via this skill. See `references/hooks.md` for tuning and the manual install snippet.
 
 ## Available resources
 
@@ -66,11 +87,14 @@ Frontmatter must include `name` (kebab-case ≤ 64 chars, matching folder) and `
 - `assets/examples/roll-dice/` — tiny worked example skill (matches the official quickstart).
 - `scripts/new-skill.sh` — one-shot scaffolder; creates folder tree, `SKILL.md`, `LICENSE`.
 - `scripts/validate-skill.sh` — spec-compliance checker; run after writing.
+- `scripts/task-tracker.py` — Claude Code `UserPromptSubmit` hook. Watches the user's prompts and, when the same kind of task is asked 3 times (configurable), emits a system-reminder telling Claude to suggest packaging it as a skill.
+- `scripts/install-hook.sh` — idempotent installer that wires `task-tracker.py` into `~/.claude/settings.json` (or `--project` for `./.claude/settings.local.json`).
 - `references/spec.md` — load when uncertain about a frontmatter field, naming rule, or directory convention.
 - `references/best-practices.md` — load when designing a skill from scratch (grounding in real expertise, calibrating control, gotchas-section pattern, validation loops).
 - `references/description-optimization.md` — load when the skill triggers too rarely or too often, or before publishing.
 - `references/eval.md` — load when measuring whether the skill's *outputs* are good (test cases, assertions, train/val splits).
 - `references/scripts-guide.md` — load when bundling executables in `scripts/` (one-off vs self-contained, PEP 723, designing for agentic use).
+- `references/hooks.md` — load when installing, tuning, or troubleshooting the auto-suggest hook.
 
 ## Top gotchas (always inline — do not skip)
 
