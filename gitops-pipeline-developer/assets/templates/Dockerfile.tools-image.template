@@ -1,0 +1,100 @@
+# Dockerfile — pre-baked Jenkins tools image
+#
+# Builds a single immutable image containing every auxiliary tool the pipeline
+# needs. Tag + push once, reference by digest in the agent pod template:
+#
+#   - name: tools
+#     image: <registry>/<org>/jenkins-tools@sha256:<digest>
+#
+# This is the SUPPLY-CHAIN-PREFERRED path (see references/supply-chain.md).
+# It removes the per-run download from Snyk's W012 finding entirely — the
+# only remote pull happens at registry-image-pull time, which is signed and
+# digest-pinned.
+#
+# Build (in your tools-image repo's CI):
+#
+#   docker buildx build --platform linux/amd64 -t <registry>/<org>/jenkins-tools:<tag> --push .
+#
+# Then sign the image with cosign and reference by digest in the pod template.
+
+FROM alpine/k8s:1.31.4
+
+# ── Pinned tool versions ─────────────────────────────────────────────────
+# Update via the procedure in references/supply-chain.md. Every SHA below
+# must match the upstream's published checksum or signed release.
+ARG COSIGN_VER=v2.4.1
+ARG COSIGN_SHA=<set-via-references/supply-chain.md>
+ARG GRYPE_VER=v0.84.0
+ARG GRYPE_INSTALL_REF=<commit-sha-of-anchore-grype-install.sh>
+ARG GRYPE_INSTALL_SHA=<set-via-references/supply-chain.md>
+ARG SYFT_VER=v1.18.1
+ARG SYFT_INSTALL_REF=<commit-sha-of-anchore-syft-install.sh>
+ARG SYFT_INSTALL_SHA=<set-via-references/supply-chain.md>
+ARG SONAR_VER=5.0.1.3006
+ARG SONAR_SHA=<set-via-references/supply-chain.md>
+
+# ── Distro packages (signed by the Alpine key) ──────────────────────────
+RUN apk add --no-cache \
+        bash \
+        buildctl \
+        coreutils \
+        curl \
+        git \
+        jq \
+        nodejs \
+        npm \
+        openjdk17-jre \
+        openssh-client \
+        skopeo \
+        tar \
+        unzip \
+        yq
+
+# ── verify helper baked in for downstream use --------------------------
+RUN cat > /usr/local/bin/verify-sha256 <<'BASH' && chmod +x /usr/local/bin/verify-sha256
+#!/usr/bin/env bash
+set -euo pipefail
+file="$1"; expected="$2"
+actual=$(sha256sum "$file" | awk '{print $1}')
+[ "$actual" = "$expected" ] || { echo "checksum mismatch for $file: $actual ≠ $expected" >&2; exit 1; }
+echo "OK: $file"
+BASH
+
+# ── cosign (pinned tag + SHA-verified) ──────────────────────────────────
+RUN curl -fsSL --retry 3 -o /usr/local/bin/cosign \
+        "https://github.com/sigstore/cosign/releases/download/${COSIGN_VER}/cosign-linux-amd64" \
+    && verify-sha256 /usr/local/bin/cosign "${COSIGN_SHA}" \
+    && chmod +x /usr/local/bin/cosign \
+    && cosign version
+
+# ── grype (install script pinned by commit SHA + binary by tag) ─────────
+RUN curl -fsSL --retry 3 -o /tmp/grype-install.sh \
+        "https://raw.githubusercontent.com/anchore/grype/${GRYPE_INSTALL_REF}/install.sh" \
+    && verify-sha256 /tmp/grype-install.sh "${GRYPE_INSTALL_SHA}" \
+    && sh /tmp/grype-install.sh -b /usr/local/bin "${GRYPE_VER}" \
+    && rm -f /tmp/grype-install.sh \
+    && grype version
+
+# ── syft (same pattern as grype) ────────────────────────────────────────
+RUN curl -fsSL --retry 3 -o /tmp/syft-install.sh \
+        "https://raw.githubusercontent.com/anchore/syft/${SYFT_INSTALL_REF}/install.sh" \
+    && verify-sha256 /tmp/syft-install.sh "${SYFT_INSTALL_SHA}" \
+    && sh /tmp/syft-install.sh -b /usr/local/bin "${SYFT_VER}" \
+    && rm -f /tmp/syft-install.sh \
+    && syft version
+
+# ── sonar-scanner ───────────────────────────────────────────────────────
+RUN curl -fsSL --retry 3 -o /tmp/ss.zip \
+        "https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-${SONAR_VER}-linux.zip" \
+    && verify-sha256 /tmp/ss.zip "${SONAR_SHA}" \
+    && unzip -q /tmp/ss.zip -d /opt \
+    && ln -sfn "/opt/sonar-scanner-${SONAR_VER}-linux/bin/sonar-scanner" /usr/local/bin/sonar-scanner \
+    && rm -f /tmp/ss.zip \
+    && sonar-scanner --version
+
+# ── commitlint (npm, pinned to the major) ───────────────────────────────
+RUN npm i -g @commitlint/cli@^19 @commitlint/config-conventional@^19
+
+# ── Default sleep so the pod template can use this as a "tools" sidecar
+ENTRYPOINT ["sleep"]
+CMD ["infinity"]
