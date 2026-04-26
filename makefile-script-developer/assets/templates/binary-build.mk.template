@@ -1,0 +1,177 @@
+# ==============================================================================
+# Binary Build Makefile — cross-platform single-file binaries
+#
+# Detects platform (Linux / macOS / Windows) and uses the right separator,
+# extension, and binary name. Drop-in for Go, Rust, PyInstaller, Nuitka,
+# or any tool that produces a single binary.
+#
+# Usage:
+#   make build
+#   make test-binary
+#   make dist            # build + checksum + tarball
+#   make install         # to /usr/local/bin
+# ==============================================================================
+
+SHELL         := /bin/bash
+.SHELLFLAGS   := -euo pipefail -c
+.DEFAULT_GOAL := help
+.DELETE_ON_ERROR:
+MAKEFLAGS     += --no-print-directory
+
+# ------------------------------------------------------------------------------
+# Configuration
+# ------------------------------------------------------------------------------
+
+APP_NAME  := myapp
+VERSION   := 0.1.0
+ENTRY     := main.go
+DIST_DIR  := dist
+BUILD_DIR := build
+
+# Platform detection
+UNAME_S := $(shell uname -s)
+UNAME_M := $(shell uname -m)
+
+ifeq ($(UNAME_S),Linux)
+    PLATFORM := linux
+    EXT      :=
+    SEP      := :
+endif
+ifeq ($(UNAME_S),Darwin)
+    PLATFORM := macos
+    EXT      :=
+    SEP      := :
+endif
+ifeq ($(OS),Windows_NT)
+    PLATFORM := windows
+    EXT      := .exe
+    SEP      := ;
+endif
+
+BINARY := $(APP_NAME)-$(PLATFORM)-$(UNAME_M)$(EXT)
+
+# ------------------------------------------------------------------------------
+# Pre-flight
+# ------------------------------------------------------------------------------
+
+.PHONY: check-tools
+check-tools: ## Verify required tools
+	@command -v go >/dev/null 2>&1 || { echo "ERROR: go not installed"; exit 1; }
+	@echo "Tools OK ($(PLATFORM)/$(UNAME_M))"
+
+# ------------------------------------------------------------------------------
+# Build / test / lint
+# ------------------------------------------------------------------------------
+
+.PHONY: build
+build: check-tools ## Build single-file binary for current platform
+	@echo "Building $(BINARY)..."
+	@mkdir -p $(DIST_DIR)
+	@go build -ldflags "-X main.Version=$(VERSION) -s -w" \
+	  -o $(DIST_DIR)/$(BINARY) ./$(dir $(ENTRY))
+	@ls -lh $(DIST_DIR)/$(BINARY)
+	@echo "Built: $(DIST_DIR)/$(BINARY)"
+
+.PHONY: build-debug
+build-debug: check-tools ## Build with debug info
+	@mkdir -p $(DIST_DIR)
+	@go build -ldflags "-X main.Version=$(VERSION)" \
+	  -gcflags "all=-N -l" \
+	  -o $(DIST_DIR)/$(APP_NAME)-debug-$(PLATFORM)-$(UNAME_M)$(EXT) ./$(dir $(ENTRY))
+
+.PHONY: build-all
+build-all: ## Cross-build for linux + darwin + windows (amd64 + arm64)
+	@for os in linux darwin windows; do \
+		for arch in amd64 arm64; do \
+			ext=""; \
+			[ "$$os" = "windows" ] && ext=".exe"; \
+			out=$(DIST_DIR)/$(APP_NAME)-$$os-$$arch$$ext; \
+			echo "Building $$out..."; \
+			GOOS=$$os GOARCH=$$arch go build -ldflags "-X main.Version=$(VERSION) -s -w" \
+			  -o $$out ./$(dir $(ENTRY)); \
+		done; \
+	done
+	@ls -lh $(DIST_DIR)/
+
+.PHONY: test
+test: check-tools ## Run unit tests
+	@go test -race -coverprofile=coverage.out ./...
+
+.PHONY: test-binary
+test-binary: build ## Smoke-test compiled binary
+	@echo "--- $(BINARY) --version ---"
+	@$(DIST_DIR)/$(BINARY) --version || echo "WARN: --version failed"
+	@echo ""
+	@echo "--- $(BINARY) --help ---"
+	@$(DIST_DIR)/$(BINARY) --help | head -20 || echo "WARN: --help failed"
+
+.PHONY: lint
+lint: ## Run linter
+	@command -v golangci-lint >/dev/null 2>&1 || { echo "ERROR: golangci-lint not installed"; exit 1; }
+	@golangci-lint run ./...
+
+# ------------------------------------------------------------------------------
+# Distribution
+# ------------------------------------------------------------------------------
+
+.PHONY: checksum
+checksum: ## Generate SHA-256 checksums for all binaries
+	@cd $(DIST_DIR) && \
+	  (sha256sum $(APP_NAME)-* > SHA256SUMS.txt 2>/dev/null \
+	    || shasum -a 256 $(APP_NAME)-* > SHA256SUMS.txt)
+	@cat $(DIST_DIR)/SHA256SUMS.txt
+
+.PHONY: dist
+dist: build checksum ## Build + checksum + tarball
+	@mkdir -p $(DIST_DIR)/pkg
+	@cp $(DIST_DIR)/$(BINARY) $(DIST_DIR)/pkg/$(APP_NAME)$(EXT)
+	@cp README.md $(DIST_DIR)/pkg/ 2>/dev/null || true
+	@cp $(DIST_DIR)/SHA256SUMS.txt $(DIST_DIR)/pkg/
+	@cd $(DIST_DIR)/pkg && tar czf ../$(APP_NAME)-v$(VERSION)-$(PLATFORM)-$(UNAME_M).tar.gz *
+	@rm -rf $(DIST_DIR)/pkg
+	@echo "Dist: $(DIST_DIR)/$(APP_NAME)-v$(VERSION)-$(PLATFORM)-$(UNAME_M).tar.gz"
+
+# ------------------------------------------------------------------------------
+# Install / uninstall
+# ------------------------------------------------------------------------------
+
+.PHONY: install
+install: build ## Install binary to /usr/local/bin
+	@test -f $(DIST_DIR)/$(BINARY) || { echo "Run 'make build' first"; exit 1; }
+	install -m 755 $(DIST_DIR)/$(BINARY) /usr/local/bin/$(APP_NAME)$(EXT)
+	@echo "Installed to /usr/local/bin/$(APP_NAME)$(EXT)"
+
+.PHONY: uninstall
+uninstall: ## Remove from /usr/local/bin (CI=true to skip prompt)
+	@[ "$(CI)" = "true" ] || { \
+		read -p "Type 'uninstall-$(APP_NAME)' to confirm: " confirm; \
+		[ "$$confirm" = "uninstall-$(APP_NAME)" ] || { echo "Cancelled"; exit 1; }; \
+	}
+	@rm -f /usr/local/bin/$(APP_NAME)$(EXT)
+	@echo "Uninstalled"
+
+# ------------------------------------------------------------------------------
+# Maintenance
+# ------------------------------------------------------------------------------
+
+.PHONY: clean
+clean: ## Remove build artifacts
+	@rm -rf $(DIST_DIR) $(BUILD_DIR) coverage.out
+	@find . -name "*.pyc" -delete 2>/dev/null || true
+	@find . -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
+	@echo "Cleaned"
+
+# ------------------------------------------------------------------------------
+# Help
+# ------------------------------------------------------------------------------
+
+.PHONY: help
+help: ## Show this help
+	@echo ""
+	@echo "  $(APP_NAME) v$(VERSION) — Build automation ($(PLATFORM)/$(UNAME_M))"
+	@echo ""
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
+	  awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
+	@echo ""
+	@echo "  Output: $(DIST_DIR)/$(BINARY)"
+	@echo ""
