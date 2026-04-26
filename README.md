@@ -42,6 +42,14 @@ Tools for building more skills.
   npx skills@latest add MKAbuMattar/skills/qa
   ```
 
+## CI/CD & Release
+
+- **gitops-pipeline-developer** — Author production-ready GitOps release pipelines (Jenkins-style by default; portable patterns for GitHub Actions, GitLab CI, Drone) that combine Gitflow branching, Conventional Commits, automatic SemVer bumping, a SonarQube quality gate, Grype container image scanning, and an aggregated quality+security **scorecard with policy alignment checks**. Includes a runnable `compute-score.sh` that turns Sonar + Grype JSON into a 0–100 score plus pass/fail policy alignments.
+
+  ```
+  npx skills@latest add MKAbuMattar/skills/gitops-pipeline-developer
+  ```
+
 ## Planning & Architecture
 
 - **information-architecture** — Plan the structural and execution architecture of a feature, app, or site. Produces both an `INFORMATION_ARCHITECTURE.md` (sitemap, navigation, content hierarchy, user flows, URL strategy, naming conventions, component reuse map) **and** a phased `PLAN.md` (phases by impact × effort × risk, vertical-slice tasks with sub-tasks, dependencies, estimates, and a detailed task breakdown with Why · How · Impact · Effort). Includes a discovery checklist, phasing guide, task-slicing rules, both templates, and a fully-worked example.
@@ -63,6 +71,7 @@ ln -s "$PWD/skills/makefile-script-developer" ~/.claude/skills/
 ln -s "$PWD/skills/skill-builder"             ~/.claude/skills/
 ln -s "$PWD/skills/qa"                        ~/.claude/skills/
 ln -s "$PWD/skills/information-architecture"  ~/.claude/skills/
+ln -s "$PWD/skills/gitops-pipeline-developer" ~/.claude/skills/
 ```
 
 For other clients, see each tool's skill discovery path in the [client showcase](https://agentskills.io/clients).

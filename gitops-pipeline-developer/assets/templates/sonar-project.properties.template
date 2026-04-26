@@ -1,0 +1,44 @@
+# sonar-project.properties — SonarQube scanner config
+# Drop into the repo root. The pipeline calls sonar-scanner from the same dir.
+
+# ── Identity ───────────────────────────────────────────────────────────
+sonar.projectKey=<unique-project-key>
+sonar.projectName=<human-readable-name>
+sonar.projectVersion=${VERSION}
+
+# ── Sources / tests ────────────────────────────────────────────────────
+sonar.sources=src
+sonar.tests=tests
+sonar.sourceEncoding=UTF-8
+
+# ── Exclusions ─────────────────────────────────────────────────────────
+# Generated code, vendored deps, lockfiles, fixtures.
+sonar.exclusions=**/*.generated.*,**/*.pb.go,**/*_pb2.py,**/dist/**,**/build/**,**/vendor/**,**/node_modules/**,**/third_party/**,**/migrations/**,**/fixtures/**,**/__snapshots__/**
+
+sonar.test.inclusions=**/*.test.*,**/*.spec.*,**/test_*.py,**/*_test.go
+
+# ── Coverage report paths (uncomment whichever your test stage produces) ─
+# JS / TS (lcov from nyc / c8 / vitest)
+# sonar.javascript.lcov.reportPaths=coverage/lcov.info
+# Python (coverage.py XML)
+# sonar.python.coverage.reportPaths=coverage.xml
+# Go (go test -coverprofile)
+# sonar.go.coverage.reportPaths=coverage.out
+# Java (jacoco)
+# sonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+# Rust (tarpaulin cobertura)
+# sonar.coverageReportPaths=cobertura.xml
+# .NET
+# sonar.cs.opencover.reportsPaths=coverage.cobertura.xml
+
+# ── PR decoration ──────────────────────────────────────────────────────
+# These are filled by the pipeline at scan time (not committed values).
+# sonar.pullrequest.key=${PR_NUMBER}
+# sonar.pullrequest.branch=${BRANCH_NAME}
+# sonar.pullrequest.base=${TARGET_BRANCH}
+
+# ── Optional ───────────────────────────────────────────────────────────
+# Uncomment for monorepos with multiple modules:
+# sonar.modules=service-a,service-b
+# service-a.sonar.sources=service-a/src
+# service-b.sonar.sources=service-b/src

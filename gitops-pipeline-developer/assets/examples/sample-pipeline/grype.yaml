@@ -1,0 +1,23 @@
+# grype.yaml — acme-api (worked example)
+
+fail-on-severity: high
+only-fixed: false
+
+output: json
+file: grype-report.json
+
+db:
+  auto-update: true
+  cache-dir: ~/.cache/grype/db
+
+ignore:
+  # CVE-2024-1111 — false positive: vulnerable code path is not reachable from
+  # acme-api (issue acme/api#421). Re-evaluate when node:18-alpine is bumped.
+  - vulnerability: CVE-2024-1111
+    package:
+      name: openssl
+      version: "<3.0.10"
+
+match:
+  javascript:
+    using-cpes: false

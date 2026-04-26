@@ -21,14 +21,14 @@ Usage: $(basename "$0") <service> <resource-name> [provider] [version]
 Create a Terraform module with proper structure.
 
 ARGUMENTS:
-    service         Service name (e.g., vpc, obs)
+    service         Service name (e.g., vpc, network, storage)
     resource-name   Resource name (e.g., vpc-subnet)
-    provider        Provider name (default: huaweicloud)
-    version         Provider version (default: 1.36.0)
+    provider        Provider name (default: aws)
+    version         Provider version (default: 5.0)
 
 EXAMPLES:
     $(basename "$0") vpc vpc-subnet
-    $(basename "$0") vpc vpc-subnet huaweicloud 1.36.0
+    $(basename "$0") vpc vpc-subnet aws 5.0
 
 EOF
     exit 0
@@ -62,8 +62,8 @@ main() {
 
     local SERVICE="$1"
     local RESOURCE_NAME="$2"
-    local PROVIDER="${3:-huaweicloud}"
-    local VERSION="${4:-1.36.0}"
+    local PROVIDER="${3:-aws}"
+    local VERSION="${4:-5.0}"
 
     local MODULE_PATH="modules/${SERVICE}/${RESOURCE_NAME}"
 

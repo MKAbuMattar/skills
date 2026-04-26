@@ -1,0 +1,57 @@
+# grype.yaml — image vulnerability scan config
+#
+# Drop into the repo root. The pipeline calls:
+#     grype "sbom:./sbom.cdx.json" -c grype.yaml --fail-on ${GRYPE_FAIL_ON:-high}
+
+# ── Severity gate ──────────────────────────────────────────────────────
+# Pipeline fails when any vulnerability of this severity or higher is found.
+# Tune over time:
+#   * Initial rollout:  critical
+#   * Stable production: high       ← recommended starting point
+#   * Mature security:  medium
+fail-on-severity: high
+
+# Only fail when a fix is available. Useful for legacy bases where
+# unpatchable CVEs aren't actionable. Leave false for stricter gating.
+only-fixed: false
+
+# ── Output ─────────────────────────────────────────────────────────────
+output: json
+file: grype-report.json
+
+# ── Vulnerability database ────────────────────────────────────────────
+db:
+  auto-update: true
+  cache-dir: ~/.cache/grype/db
+  # For air-gapped environments: mirror the DB and pin via update-url.
+  # update-url: https://internal-mirror/grype/db/listing.json
+
+# ── Ignore list ────────────────────────────────────────────────────────
+# Every entry MUST have a comment line above it referencing an issue,
+# a RISK-* identifier, or a dated rationale. Audit quarterly.
+ignore:
+  # Example — CVE-2023-1234 false positive on libfoo (issue #142)
+  # - vulnerability: CVE-2023-1234
+  #   package:
+  #     name: libfoo
+  #
+  # Example — accepted risk; only affects an unused code path. (RISK-2024-03)
+  # - vulnerability: CVE-2024-9999
+  #   package:
+  #     name: openssl
+  #     version: "<3.0.10"
+
+# ── Match rules ────────────────────────────────────────────────────────
+# Tighten matching to reduce false positives.
+match:
+  java:
+    using-cpes: true
+  javascript:
+    using-cpes: false       # Use SBOM PURLs for JS — CPEs are noisy
+  python:
+    using-cpes: false
+  ruby:
+    using-cpes: false
+  golang:
+    using-cpes: true
+    always-use-cpe-for-stdlib: true

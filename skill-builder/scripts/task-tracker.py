@@ -71,6 +71,7 @@ STOPWORDS = frozenset(
 # ---------------------------------------------------------------------------
 
 def env_float(name: str, default: float) -> float:
+    """Read an env var as a float; return `default` if unset or unparseable."""
     try:
         return float(os.environ.get(name, default))
     except (TypeError, ValueError):
@@ -78,6 +79,7 @@ def env_float(name: str, default: float) -> float:
 
 
 def env_int(name: str, default: int) -> int:
+    """Read an env var as an int; return `default` if unset or unparseable."""
     try:
         return int(os.environ.get(name, default))
     except (TypeError, ValueError):
@@ -85,6 +87,7 @@ def env_int(name: str, default: int) -> int:
 
 
 def debug(msg: str) -> None:
+    """Append `msg` to ~/.claude/skill-builder-debug.log when TASK_TRACKER_DEBUG=1."""
     if os.environ.get("TASK_TRACKER_DEBUG") == "1":
         log = Path.home() / ".claude" / "skill-builder-debug.log"
         log.parent.mkdir(parents=True, exist_ok=True)
@@ -119,6 +122,7 @@ def overlap_coef(a: set[str], b: set[str]) -> float:
 
 
 def load_history(path: Path, window_days: int) -> list[dict]:
+    """Read JSONL history at `path`, keeping entries newer than `window_days`."""
     if not path.exists():
         return []
     cutoff = time.time() - window_days * 86400
@@ -134,6 +138,7 @@ def load_history(path: Path, window_days: int) -> list[dict]:
 
 
 def append_history(path: Path, entry: dict) -> None:
+    """Append `entry` (one JSON object per line) and rotate when oversized."""
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as f:
         f.write(json.dumps(entry) + "\n")
@@ -152,6 +157,9 @@ def append_history(path: Path, entry: dict) -> None:
 # ---------------------------------------------------------------------------
 
 def main() -> int:
+    """Hook entry point. Reads JSON on stdin, emits a system-reminder if a similar
+    task has been asked at least `TASK_TRACKER_REPEATS` times within the window.
+    Always exits 0 — never blocks the user's prompt."""
     # Read hook input. Claude Code passes JSON on stdin for UserPromptSubmit.
     raw = sys.stdin.read()
     try:

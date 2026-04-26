@@ -1,0 +1,25 @@
+// =============================================================================
+// Jenkinsfile (modular) — acme-api
+// Compare against Jenkinsfile (monolithic) in this directory: same pipeline,
+// 8 lines of declaration instead of ~250.
+//
+// Requires the gitops-pipeline shared library to be registered in Jenkins
+// (Manage Jenkins → System → Global Pipeline Libraries). See
+// `assets/shared-library/README.md` for setup, and `scripts/bootstrap-jenkins.sh`
+// for an automated bootstrap that registers the library for you.
+// =============================================================================
+
+@Library('gitops-pipeline@main') _
+
+pipelineGitOps([
+    registry:       'ghcr.io',
+    org:            'acme',
+    image:          'api',
+    chartRepo:      'git@github.com:acme/charts.git',
+    chartBranch:    'main',
+    valuesFile:     'envs/${env.CHANNEL}/values.yaml',
+    imageKey:       'image',
+    cosignKeyRef:   'hashivault://cosign-key',
+    grypeFailOn:    'high',
+    scoreThreshold: 70,
+])
