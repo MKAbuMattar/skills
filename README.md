@@ -28,10 +28,18 @@ Production-ready scripts with proper error handling, validated input, and cross-
 
 Tools for building more skills.
 
-- **skill-builder** — Build new Agent Skills that follow the agentskills.io spec and best practices: slim `SKILL.md` (≤ 200 lines), progressive disclosure via `references/`, bundled `assets/` and `scripts/`, MIT `LICENSE`. Ships a one-command scaffolder and a spec-compliance validator.
+- **skill-builder** — Build new Agent Skills that follow the agentskills.io spec and best practices: slim `SKILL.md` (≤ 200 lines), progressive disclosure via `references/`, bundled `assets/` and `scripts/`, MIT `LICENSE`. Ships a one-command scaffolder, a spec-compliance validator, and an auto-suggest hook for recurring tasks.
 
   ```
   npx skills@latest add MKAbuMattar/skills/skill-builder
+  ```
+
+## QA & Issue Tracking
+
+- **qa** — Run an interactive QA session: capture user-described bugs, ask brief clarifying questions, explore the codebase for domain context, decide single-vs-breakdown, and file durable user-focused GitHub issues via `gh issue create` — without referencing internal file paths or line numbers. Ships ready-to-fill single-issue and breakdown-subissue body templates.
+
+  ```
+  npx skills@latest add MKAbuMattar/skills/qa
   ```
 
 ## Manual install
@@ -45,6 +53,7 @@ ln -s "$PWD/skills/linux-script-developer"    ~/.claude/skills/
 ln -s "$PWD/skills/python-script-developer"   ~/.claude/skills/
 ln -s "$PWD/skills/makefile-script-developer" ~/.claude/skills/
 ln -s "$PWD/skills/skill-builder"             ~/.claude/skills/
+ln -s "$PWD/skills/qa"                        ~/.claude/skills/
 ```
 
 For other clients, see each tool's skill discovery path in the [client showcase](https://agentskills.io/clients).
