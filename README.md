@@ -64,6 +64,14 @@ Tools for building more skills.
   npx skills@latest add MKAbuMattar/skills/information-architecture
   ```
 
+## Writing & Editing
+
+- **humanizer** — Edit or review text to remove signs of AI-generated writing. Catches all 29 patterns from Wikipedia's "Signs of AI writing" guide (significance inflation, promotional language, superficial -ing analyses, vague attributions, em-dash overuse, rule-of-three, AI vocabulary, copula avoidance, negative parallelisms, sycophantic openings, and more). Runs the full draft → audit → final loop (asks "what makes this so obviously AI generated?" and revises until the answer is honest). Supports voice calibration when given a writing sample.
+
+  ```
+  npx skills@latest add MKAbuMattar/skills/humanizer
+  ```
+
 ## Manual install
 
 If you prefer not to use the `skills` CLI, clone and symlink:
@@ -79,6 +87,7 @@ ln -s "$PWD/skills/qa"                        ~/.claude/skills/
 ln -s "$PWD/skills/information-architecture"  ~/.claude/skills/
 ln -s "$PWD/skills/gitops-pipeline-developer" ~/.claude/skills/
 ln -s "$PWD/skills/gitops-cd-developer"       ~/.claude/skills/
+ln -s "$PWD/skills/humanizer"                 ~/.claude/skills/
 ```
 
 For other clients, see each tool's skill discovery path in the [client showcase](https://agentskills.io/clients).
