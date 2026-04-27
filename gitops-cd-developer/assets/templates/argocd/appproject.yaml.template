@@ -1,0 +1,75 @@
+# appproject.yaml — the security boundary for one team / tenant / env.
+#
+# Applied separately from Applications, ideally before the root Application.
+# See references/projects-rbac.md for the design choices (per-team vs
+# per-tenant vs per-env) and the four secrets-handling shapes.
+
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: ${PROJECT_NAME}
+  namespace: argocd
+  # finalizer ensures sub-Applications are cleaned up when the project deletes
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: ${PROJECT_DESCRIPTION}
+
+  # Source repo whitelist — pin every URL exactly. NEVER use "*".
+  sourceRepos:
+    - ${GITOPS_REPO_URL}                                # the app-of-apps repo
+    - ${CONSUMER_CHART_REPO_URL}                        # consumer charts
+    - oci://${OCI_REGISTRY}/charts/*                    # OCI chart registry (newer ArgoCD)
+
+  # Destinations — clusters + namespaces this project may target.
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: ${TARGET_NAMESPACE}
+    - server: https://kubernetes.default.svc
+      namespace: ${TARGET_NAMESPACE}-*                  # for instance namespaces
+    # Multi-cluster: add per-cluster API server URLs here.
+
+  # Cluster-scoped resources — keep TIGHT. Most workloads need only Namespace.
+  # Platform-team projects get a broader allowlist (ClusterRole, CRD, etc.).
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+    # Uncomment if this project really needs to manage cluster RBAC:
+    # - group: rbac.authorization.k8s.io
+    #   kind: ClusterRole
+    # - group: rbac.authorization.k8s.io
+    #   kind: ClusterRoleBinding
+
+  # Namespaced resources — broader is OK. Block what definitely shouldn't
+  # come from workload manifests (e.g. ResourceQuota set by platform team).
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
+  namespaceResourceBlacklist:
+    - group: ""
+      kind: ResourceQuota
+    - group: ""
+      kind: LimitRange
+
+  # Optional: roles + per-role tokens.
+  roles:
+    - name: read-only
+      description: Dashboard read access for engineers
+      policies:
+        - p, proj:${PROJECT_NAME}:read-only, applications, get, ${PROJECT_NAME}/*, allow
+      groups:
+        - ${ORG}:engineers
+    - name: ci-bot
+      description: CI to trigger sync after image push (optional — poll loop is fine too)
+      policies:
+        - p, proj:${PROJECT_NAME}:ci-bot, applications, sync, ${PROJECT_NAME}/*, allow
+        - p, proj:${PROJECT_NAME}:ci-bot, applications, get,  ${PROJECT_NAME}/*, allow
+
+  # Optional: sync windows — quiet hours.
+  # syncWindows:
+  #   - kind: deny
+  #     schedule: "0 0 * * *"
+  #     duration: 1h
+  #     applications:
+  #       - "*"
+  #     manualSync: true

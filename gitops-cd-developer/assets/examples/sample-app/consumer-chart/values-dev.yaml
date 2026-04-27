@@ -1,0 +1,23 @@
+# Dev overrides. CI writes the image fields here on every successful build.
+
+chart-template:
+  image:
+    repository: registry.example.com/acme/api
+    tag: 1.6.0-beta.4+a8d3538           # CI rewrites
+    digest: ""                           # dev may stay tag-only
+  replicaCount: 1
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits:   { cpu: 500m, memory: 512Mi }
+
+  ingress:
+    enabled: true
+    className: nginx
+    hosts:
+      - host: api.dev.example.com
+        paths: [{ path: /, pathType: Prefix }]
+
+  configMap:
+    data:
+      LOG_LEVEL: debug
+      NODE_ENV: development

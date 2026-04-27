@@ -1,0 +1,55 @@
+{{- $env := .Values.env -}}
+{{- $project := .Values.project -}}
+{{- $repo := .Values.consumerChartRepoURL -}}
+{{- $branch := .Values.consumerChartBranch -}}
+{{- range $name, $cfg := .Values.apps }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ $name }}-{{ $env }}
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  labels:
+    app.kubernetes.io/managed-by: argocd
+    env: {{ $env }}
+    app: {{ $name }}
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ $cfg.syncWave | default 0 | quote }}
+spec:
+  project: {{ $project }}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ $cfg.namespace }}
+  source:
+    repoURL: {{ $repo | quote }}
+    targetRevision: {{ $branch }}
+    path: {{ $cfg.chartPath }}
+    helm:
+      valueFiles:
+        {{- range $cfg.valuesFiles }}
+        - {{ . }}
+        {{- end }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: true
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas
+{{- end }}

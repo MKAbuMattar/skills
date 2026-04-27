@@ -1,0 +1,155 @@
+{{- /*
+Argo Rollouts variant — replaces the Deployment when rollout.enabled is true.
+Supports rolling / blue-green / canary strategies. Requires the argo-rollouts
+controller installed in the cluster (see references/deployment-strategies.md).
+*/ -}}
+{{- if .Values.rollout.enabled -}}
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: {{ include "chart.fullname" . }}
+  labels:
+    {{- include "chart.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.hpa.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
+  selector:
+    matchLabels:
+      {{- include "chart.selectorLabels" . | nindent 6 }}
+  strategy:
+    {{- if eq .Values.rollout.strategy "canary" }}
+    canary:
+      {{- with .Values.rollout.canary }}
+      {{- toYaml . | nindent 6 }}
+      {{- end }}
+    {{- else if eq .Values.rollout.strategy "bluegreen" }}
+    blueGreen:
+      activeService: {{ include "chart.fullname" . }}
+      previewService: {{ include "chart.fullname" . }}-preview
+      {{- with .Values.rollout.bluegreen }}
+      {{- toYaml . | nindent 6 }}
+      {{- end }}
+    {{- else }}
+    canary:
+      steps:
+        - setWeight: 100
+    {{- end }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "chart.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "chart.serviceAccountName" . }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.nodePool.enabled }}
+      nodeSelector:
+        node-role: {{ .Values.nodePool.role | quote }}
+      tolerations:
+        - key: node-role
+          operator: Equal
+          value: {{ .Values.nodePool.role | quote }}
+          effect: NoSchedule
+      {{- else }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.hostAliases }}
+      hostAliases:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.initContainers }}
+      initContainers:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: {{ include "chart.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.targetPort }}
+              protocol: TCP
+            {{- range .Values.service.extraPorts }}
+            - name: {{ .name }}
+              containerPort: {{ .targetPort | default .port }}
+              protocol: {{ .protocol | default "TCP" }}
+            {{- end }}
+          {{- if .Values.livenessProbe.enabled }}
+          livenessProbe:
+            {{- omit .Values.livenessProbe "enabled" | toYaml | nindent 12 }}
+          {{- end }}
+          {{- if .Values.readinessProbe.enabled }}
+          readinessProbe:
+            {{- omit .Values.readinessProbe "enabled" | toYaml | nindent 12 }}
+          {{- end }}
+          {{- if .Values.startupProbe.enabled }}
+          startupProbe:
+            {{- omit .Values.startupProbe "enabled" | toYaml | nindent 12 }}
+          {{- end }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          env:
+            {{- with .Values.env }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+            {{- range .Values.envFromSecretRef }}
+            {{- $secretName := .name }}
+            {{- range .keys }}
+            - name: {{ . | upper }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secretName }}
+                  key: {{ . }}
+            {{- end }}
+            {{- end }}
+            {{- range .Values.envFromConfigMapRef }}
+            {{- $cmName := .name }}
+            {{- range .keys }}
+            - name: {{ . }}
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ $cmName }}
+                  key: {{ . }}
+            {{- end }}
+            {{- end }}
+          {{- with .Values.volumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.volumes }}
+      volumes:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

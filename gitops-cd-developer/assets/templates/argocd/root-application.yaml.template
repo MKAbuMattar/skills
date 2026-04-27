@@ -1,0 +1,63 @@
+# root-application.yaml — the ONE Application a human applies once.
+#
+# Apply with:
+#   kubectl apply -f root-application.yaml
+#
+# From then on, this Application is managed by itself (the GitOps repo
+# contains an Application manifest pointing at this same file). Edits to
+# this file go through a PR to the GitOps repo, NOT a re-apply by hand.
+#
+# The root points at a Helm chart whose templates render N child
+# Applications — see assets/templates/argocd/values-env.yaml.template.
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  # Name pattern: app-<env>. Adjust if your project uses a different convention.
+  name: app-${ENV}
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  # AppProject defines the security boundary — see references/projects-rbac.md.
+  project: ${PROJECT_NAME}
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+
+  source:
+    repoURL: ${GITOPS_REPO_URL}
+    targetRevision: ${GITOPS_BRANCH}     # main / develop / etc.
+    path: envs/${ENV}                    # e.g. envs/dev, envs/prod
+    helm:
+      # The values file passes the env-specific config to the chart that
+      # generates the children. Multi-region: list multiple files.
+      valueFiles:
+        - values.yaml
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      # Root: keep allowEmpty=false so an empty render (misconfig) FAILS
+      # rather than silently nukes the cluster. Children flip this to true.
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+
+  # Don't diff fields owned by other controllers.
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas         # let HPA manage replica count

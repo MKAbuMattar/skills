@@ -1,0 +1,11 @@
+apiVersion: v2
+name: acme-api
+description: Acme API service — depends on chart-template (the shared workload chart).
+type: application
+version: 0.1.0
+appVersion: "1.5.0"
+
+dependencies:
+  - name: chart-template
+    version: 0.1.0                # PIN — never floating
+    repository: "oci://registry.example.com/charts"

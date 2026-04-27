@@ -1,0 +1,6 @@
+apiVersion: v2
+name: app-prod
+description: Spawns Application manifests for the prod environment.
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
