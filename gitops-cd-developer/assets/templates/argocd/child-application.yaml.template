@@ -1,0 +1,79 @@
+# child-application.yaml — one rendered per workload, by the env's chart.
+#
+# Lives inside envs/<env>/templates/apps.yaml as a Go template. The root
+# Application reads envs/<env>/values.yaml and renders one of these per
+# entry in `apps:`.
+#
+# Skeleton (in templates/apps.yaml):
+#
+#   {{- range $name, $cfg := .Values.apps }}
+#   ---
+#   apiVersion: argoproj.io/v1alpha1
+#   kind: Application
+#   metadata:
+#     name: {{ $name }}-{{ $.Values.env }}
+#     ...
+#   {{- end }}
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  # name pattern: <app>-<env> e.g. payments-prod
+  name: ${APP_NAME}-${ENV}
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  labels:
+    app.kubernetes.io/managed-by: argocd
+    env: ${ENV}
+    app: ${APP_NAME}
+  annotations:
+    # Sync wave (within this Application). For cross-Application ordering,
+    # use App-of-Apps levels — see references/app-of-apps.md.
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: ${PROJECT_NAME}
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ${TARGET_NAMESPACE}
+
+  source:
+    repoURL: ${CONSUMER_CHART_REPO_URL}
+    targetRevision: ${CONSUMER_CHART_BRANCH}
+    path: ${CONSUMER_CHART_PATH}
+    helm:
+      valueFiles:
+        - values.yaml
+        - values-${ENV}.yaml
+      # Inline parameter overrides win over files. Use sparingly — favor
+      # values files so the full config is auditable in one place.
+      parameters: []
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: true             # children may legitimately render zero resources
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+
+  # Same drift exclusions as root.
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas
+    - group: ""
+      kind: Service
+      jsonPointers:
+        - /spec/clusterIP

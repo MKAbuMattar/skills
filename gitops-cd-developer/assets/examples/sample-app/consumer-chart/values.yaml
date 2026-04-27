@@ -1,0 +1,29 @@
+# Shared defaults — same across all environments. Env-specific values are in
+# values-<env>.yaml.
+
+chart-template:
+  service:
+    port: 3000
+    targetPort: 3000
+
+  livenessProbe:
+    enabled: true
+    httpGet:
+      path: /health
+      port: http
+    initialDelaySeconds: 10
+
+  readinessProbe:
+    enabled: true
+    httpGet:
+      path: /ready
+      port: http
+    initialDelaySeconds: 5
+
+  configMap:
+    enabled: true
+    data:
+      LOG_LEVEL: info
+
+  serviceAccount:
+    create: true

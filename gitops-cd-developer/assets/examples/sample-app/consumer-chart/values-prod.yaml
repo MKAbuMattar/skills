@@ -1,0 +1,43 @@
+# Prod overrides. CI writes both tag AND digest here.
+# Production deploys MUST pin to digest — see SKILL.md gotcha.
+
+chart-template:
+  image:
+    repository: registry.example.com/acme/api
+    tag: 1.5.0
+    digest: sha256:abc123def456789012345678901234567890123456789012345678901234ab
+  replicaCount: 6
+  resources:
+    requests: { cpu: 500m, memory: 1Gi }
+    limits:   { cpu: 2,    memory: 4Gi }
+
+  hpa:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 30
+    targetCPUUtilizationPercentage: 65
+
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+    hosts:
+      - host: api.example.com
+        paths: [{ path: /, pathType: Prefix }]
+    tls:
+      - secretName: api-prod-tls
+        hosts: [api.example.com]
+
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 2
+
+  configMap:
+    data:
+      LOG_LEVEL: warn
+      NODE_ENV: production
+
+  envFromSecretRef:
+    - name: api-secrets
+      keys: [DATABASE_URL, JWT_SIGNING_KEY]

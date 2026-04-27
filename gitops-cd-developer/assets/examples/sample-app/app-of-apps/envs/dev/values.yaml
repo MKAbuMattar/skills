@@ -1,0 +1,23 @@
+# Which apps run in dev. Add a key → ArgoCD spawns it. Remove a key → ArgoCD prunes its workloads.
+
+env: dev
+project: acme-platform
+gitopsRepoURL: "git@github.com:acme/gitops.git"
+consumerChartRepoURL: "git@github.com:acme/charts.git"
+consumerChartBranch: main
+
+apps:
+  acme-api:
+    namespace: acme-dev
+    chartPath: charts/acme-api
+    valuesFiles:
+      - values.yaml
+      - values-dev.yaml
+    syncWave: 0
+
+  # Add a new app to dev:
+  # acme-worker:
+  #   namespace: acme-dev
+  #   chartPath: charts/acme-worker
+  #   valuesFiles: [values.yaml, values-dev.yaml]
+  #   syncWave: 0

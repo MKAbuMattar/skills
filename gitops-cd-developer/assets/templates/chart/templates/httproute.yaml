@@ -1,0 +1,52 @@
+{{- /*
+Gateway API HTTPRoute — newer L7 routing primitive (v1).
+Off by default. Renders alongside (or instead of) the classic Ingress when
+httpRoute.enabled is true. Requires a Gateway-API-conformant controller
+in the cluster (Envoy Gateway, NGINX Gateway Fabric, Istio, Cilium, …).
+
+Typical values shape:
+
+  httpRoute:
+    enabled: true
+    parentRefs:
+      - name: my-gateway
+        namespace: gateway-system
+    hostnames:
+      - api.example.com
+    rules:
+      - matches:
+          - path: { type: PathPrefix, value: / }
+        backendRefs:
+          - name: my-app
+            port: 8080
+*/ -}}
+{{- if .Values.httpRoute.enabled -}}
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ include "chart.fullname" . }}
+  labels:
+    {{- include "chart.labels" . | nindent 4 }}
+spec:
+  {{- with .Values.httpRoute.parentRefs }}
+  parentRefs:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.httpRoute.hostnames }}
+  hostnames:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- if .Values.httpRoute.rules }}
+  rules:
+    {{- toYaml .Values.httpRoute.rules | nindent 4 }}
+  {{- else }}
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: {{ include "chart.fullname" . }}
+          port: {{ .Values.service.port }}
+  {{- end }}
+{{- end }}

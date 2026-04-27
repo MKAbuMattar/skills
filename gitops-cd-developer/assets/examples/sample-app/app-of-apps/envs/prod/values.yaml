@@ -1,0 +1,16 @@
+# Which apps run in prod.
+
+env: prod
+project: acme-platform
+gitopsRepoURL: "git@github.com:acme/gitops.git"
+consumerChartRepoURL: "git@github.com:acme/charts.git"
+consumerChartBranch: main          # for prod, consider pinning to a release tag (e.g. v1.5.0)
+
+apps:
+  acme-api:
+    namespace: acme-prod
+    chartPath: charts/acme-api
+    valuesFiles:
+      - values.yaml
+      - values-prod.yaml
+    syncWave: 0

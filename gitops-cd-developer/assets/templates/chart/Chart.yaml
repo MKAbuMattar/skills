@@ -1,0 +1,37 @@
+apiVersion: v2
+name: chart-template
+description: Reusable Helm chart for stateless web/API services. Multi-runtime (Node.js, PHP, Java, static) — runtime-agnostic schema.
+type: application
+
+# Chart schema version. Bump SemVer-correctly:
+#   MAJOR — incompatible value-schema change
+#   MINOR — new optional field
+#   PATCH — fix or doc change
+version: 0.1.0
+
+# Default application version this chart deploys. Consumers override.
+appVersion: "1.0.0"
+
+# Optional but recommended: limit Helm to versions that support the
+# templating features used (e.g. lookup, tpl, string functions).
+kubeVersion: ">=1.27.0"
+
+home: https://example.com/charts/chart-template
+sources:
+  - https://example.com/your-org/chart-template
+
+maintainers:
+  - name: Platform Team
+    email: platform@example.com
+
+keywords:
+  - kubernetes
+  - helm
+  - deployment
+  - microservice
+
+# Bundle minimal annotations for ArgoCD / Helm hub indexing.
+annotations:
+  artifacthub.io/changes: |
+    - kind: added
+      description: initial release

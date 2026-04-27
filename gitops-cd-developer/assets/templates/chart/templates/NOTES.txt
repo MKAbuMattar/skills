@@ -1,0 +1,33 @@
+Thanks for installing {{ .Chart.Name }} {{ .Chart.Version }} (app v{{ .Values.image.tag | default .Chart.AppVersion }}).
+
+Release: {{ .Release.Name }}
+Namespace: {{ .Release.Namespace }}
+
+Image:
+  {{- if .Values.image.digest }}
+  {{ .Values.image.repository }}@{{ .Values.image.digest }}     ← pinned by digest (immutable)
+  {{- else }}
+  {{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}     ← pinned by tag (mutable)
+  {{- end }}
+
+{{- if .Values.ingress.enabled }}
+
+Ingress hosts:
+{{- range .Values.ingress.hosts }}
+  - https://{{ .host }}
+{{- end }}
+{{- else if eq .Values.service.type "LoadBalancer" }}
+
+Get the LoadBalancer IP:
+  kubectl get svc {{ include "chart.fullname" . }} -n {{ .Release.Namespace }} \
+    -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+{{- else }}
+
+Cluster-internal access:
+  kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "chart.fullname" . }} 8080:{{ .Values.service.port }}
+{{- end }}
+
+{{- if .Values.hpa.enabled }}
+
+Auto-scaling enabled: {{ .Values.hpa.minReplicas }} → {{ .Values.hpa.maxReplicas }} replicas.
+{{- end }}

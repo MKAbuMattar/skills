@@ -50,6 +50,12 @@ Tools for building more skills.
   npx skills@latest add MKAbuMattar/skills/gitops-pipeline-developer
   ```
 
+- **gitops-cd-developer** — Author production GitOps CD setups: the **App-of-Apps pattern** (ArgoCD or Flux) where a root Application spawns N child Applications that auto-sync, self-heal, and prune; a **shareable runtime-agnostic Helm chart** (Node.js / PHP / Java / static) consumers depend on; **multi-environment values** (dev / staging / prod / multi-instance / multi-region); and **progressive deployment** strategies (RollingUpdate / Recreate / blue-green / canary via Argo Rollouts). Pairs with `gitops-pipeline-developer` (CI half).
+
+  ```
+  npx skills@latest add MKAbuMattar/skills/gitops-cd-developer
+  ```
+
 ## Planning & Architecture
 
 - **information-architecture** — Plan the structural and execution architecture of a feature, app, or site. Produces both an `INFORMATION_ARCHITECTURE.md` (sitemap, navigation, content hierarchy, user flows, URL strategy, naming conventions, component reuse map) **and** a phased `PLAN.md` (phases by impact × effort × risk, vertical-slice tasks with sub-tasks, dependencies, estimates, and a detailed task breakdown with Why · How · Impact · Effort). Includes a discovery checklist, phasing guide, task-slicing rules, both templates, and a fully-worked example.
@@ -72,6 +78,7 @@ ln -s "$PWD/skills/skill-builder"             ~/.claude/skills/
 ln -s "$PWD/skills/qa"                        ~/.claude/skills/
 ln -s "$PWD/skills/information-architecture"  ~/.claude/skills/
 ln -s "$PWD/skills/gitops-pipeline-developer" ~/.claude/skills/
+ln -s "$PWD/skills/gitops-cd-developer"       ~/.claude/skills/
 ```
 
 For other clients, see each tool's skill discovery path in the [client showcase](https://agentskills.io/clients).

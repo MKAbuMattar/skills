@@ -1,0 +1,37 @@
+# envs/<env>/values.yaml — the env's "which apps to spawn" file.
+# Read by the root Application's source chart; envs/<env>/templates/apps.yaml
+# walks .Values.apps and emits one Application per entry.
+
+env: ${ENV}                                  # dev | staging | prod | hotfix
+project: ${PROJECT_NAME}                     # AppProject name to use for children
+gitopsRepoURL: ${GITOPS_REPO_URL}
+consumerChartRepoURL: ${CONSUMER_CHART_REPO_URL}
+consumerChartBranch: ${CONSUMER_CHART_BRANCH}    # e.g. main / dev / release/1.5.x
+
+# Spawn one child Application per entry in this map.
+# Add an app: drop a new key here. Remove an app: delete the key (PRUNE deletes its workloads).
+apps:
+  payments:
+    namespace: payments-${ENV}
+    chartPath: charts/payments              # path inside consumerChartRepoURL
+    valuesFiles:
+      - values.yaml
+      - values-${ENV}.yaml
+    # Optional per-app overrides (override Application-level defaults):
+    syncWave: 0                              # ordering hint for sub-resources
+    # extraValueFiles: []
+    # parameters: []
+
+  catalog:
+    namespace: catalog-${ENV}
+    chartPath: charts/catalog
+    valuesFiles:
+      - values.yaml
+      - values-${ENV}.yaml
+    syncWave: 0
+
+  # frontend:
+  #   namespace: frontend-${ENV}
+  #   chartPath: charts/frontend
+  #   valuesFiles: [values.yaml, values-${ENV}.yaml]
+  #   syncWave: 1                            # syncs after backend services
