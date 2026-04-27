@@ -2,7 +2,7 @@
 name: gitops-cd-developer
 description: Author production GitOps continuous-delivery setups — the App-of-Apps pattern (ArgoCD or Flux) where a root Application spawns N child Applications that auto-sync, self-heal, and prune; reusable shareable Helm charts with multi-runtime defaults (Node.js / PHP / Java / static), HPA, probes, init containers, ingress, HTTPRoute; multi-environment values layout (dev / staging / prod, multi-instance, multi-region); and progressive deployment strategies (RollingUpdate / Recreate / blue-green / canary). Use this skill whenever the user wants to set up GitOps CD, design an App-of-Apps tree, build a sharable Helm chart, structure values.yaml across environments / instances / regions, choose a rollout strategy, configure ArgoCD sync waves and self-heal, package + push a chart to an OCI registry, or hits you with phrases like "set up ArgoCD", "app-of-apps", "GitOps for k8s", "sharable Helm chart", "multi-tenant chart", "canary deploy", "rollout strategy", "progressive delivery", or "deploy to multiple envs".
 license: MIT. See LICENSE for full terms.
-compatibility: ArgoCD 2.10+ (default target) — patterns also map to Flux 2 with `Kustomization` + `HelmRelease`. Helm 3.14+. Kubernetes 1.27+. Optional: Argo Rollouts for canary / blue-green; Gateway API for HTTPRoute; OCI-capable registry for chart distribution.
+compatibility: ArgoCD 2.10+ (default target) — patterns also map to Flux 2 with `Kustomization` + `HelmRelease`. Helm 3.14+. Kubernetes 1.27+. Optional - Argo Rollouts for canary / blue-green; Gateway API for HTTPRoute; OCI-capable registry for chart distribution.
 metadata:
   author: mkabumattar
   version: "1.0.0"
@@ -79,7 +79,7 @@ Don't invent a parallel layout if the team already has one — extend it.
 - `assets/templates/argocd/child-application.yaml.template` — the per-app spawn pattern.
 - `assets/templates/argocd/appproject.yaml.template` — the security boundary.
 - `assets/templates/argocd/values-env.yaml.template` — values shape for spawning N apps in one env.
-- `assets/templates/chart/` — complete starter chart (Chart.yaml, values.yaml, templates/{deployment,service,ingress,hpa,configmap,_helpers.tpl,NOTES.txt}).
+- `assets/templates/chart/` — complete starter chart (Chart.yaml, values.yaml, templates/{deployment,service,ingress,hpa,configmap,\_helpers.tpl,NOTES.txt}).
 - `assets/examples/sample-app/` — fully-worked tiny example (root + dev + prod children + consumer chart).
 - `scripts/package-and-push.sh` — OCI chart packaging + push + cosign sign. Idempotent.
 - `references/app-of-apps.md` — parent → children → grandchildren depth, sync waves, scaling beyond ~50 apps.
@@ -96,8 +96,8 @@ Don't invent a parallel layout if the team already has one — extend it.
 - **Production deploys pin image to digest, not tag.** The CI half writes both `image.tag` (for humans) and `image.digest` (for kubelet) into `values-<env>.yaml`. Templates should render `repo@digest` when digest is present.
 - **`automated.selfHeal: true` is non-negotiable for shared envs.** It's what undoes "I'll just kubectl edit this real quick" drift before it compounds. Without it, the cluster slowly diverges from git.
 - **`syncOptions: ServerSideApply=true`.** Client-side apply mangles fields managed by other controllers (HPA's `replicas`, kube-controller-manager's defaults, ingress controllers). Server-side respects field ownership. Default to true unless you have a documented reason.
-- **`allowEmpty: true` is a footgun on the root Application.** It prevents accidental "I deleted all the apps" autosync. On *child* Applications it's fine — leave it on. On the *root* default it false unless the root really might legitimately render zero children.
-- **Sync waves go forward only.** A child with `argocd.argoproj.io/sync-wave: "1"` syncs after wave 0; setting wave -1 doesn't run before the parent's existing wave 0 — it just runs in numeric order *within the same Application*. Use waves to stage CRDs → operators → workloads, not as cross-application ordering (that's what App-of-Apps levels are for).
+- **`allowEmpty: true` is a footgun on the root Application.** It prevents accidental "I deleted all the apps" autosync. On _child_ Applications it's fine — leave it on. On the _root_ default it false unless the root really might legitimately render zero children.
+- **Sync waves go forward only.** A child with `argocd.argoproj.io/sync-wave: "1"` syncs after wave 0; setting wave -1 doesn't run before the parent's existing wave 0 — it just runs in numeric order _within the same Application_. Use waves to stage CRDs → operators → workloads, not as cross-application ordering (that's what App-of-Apps levels are for).
 - **Don't put secrets in the GitOps repo unencrypted.** SealedSecrets / SOPS / External Secrets Operator / Vault Secrets Operator — pick one. The chart consumes Secrets by `valueFrom.secretKeyRef`, never inlines the value. See `references/projects-rbac.md` for the four common shapes.
 - **`prune: true` deletes things you remove from git. Test it on dev first.** A common surprise: removing an Application from `envs/<env>/templates/apps.yaml` actually **deletes** all of its workloads. Sometimes that's what you want; sometimes it isn't. Use `argocd app sync --dry-run` to preview a prune.
 - **Per-env values files override defaults; they don't merge across envs.** `values.yaml` + `values-prod.yaml` is the full composition for prod — `values-staging.yaml` is **not** layered into prod. If a setting must be the same across envs, put it in `values.yaml`. If it must differ, override per env.
@@ -123,7 +123,7 @@ Don't invent a parallel layout if the team already has one — extend it.
 - Disable `selfHeal` on shared envs to "make troubleshooting easier" — drift accumulates fast.
 - Use ClientSideApply on workloads with HPAs / external controllers — owned-field collisions break apply.
 - Inline secrets into the GitOps repo, even encrypted-at-rest. Use a sealed-secret / external-secret integration.
-- Treat `prune: true` casually. Removing a child Application file *deletes* its workloads.
+- Treat `prune: true` casually. Removing a child Application file _deletes_ its workloads.
 - Migrate ArgoCD ↔ Flux as part of this task. That's a separate, multi-PR project.
 - Skip the AppProject. "Default project allows everything" is the worst posture.
 - Use sync waves to order across Applications; that's what the App-of-Apps tree levels are for.
