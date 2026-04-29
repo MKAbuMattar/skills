@@ -84,6 +84,12 @@ Tools for building more skills.
   npx skills@latest add MKAbuMattar/skills/plan-interview
   ```
 
+- **architecture-audit** — Audit an existing codebase for **shallow modules** and surface **deepening opportunities** — refactors that turn shallow modules into deep ones by relocating their seams. Walks the codebase looking for friction signals (scattered concepts, leaky non-seams, testability theater, single-adapter "ports"), applies the **deletion test** to every candidate, and presents a numbered list with `Files / Problem / Deletion-test / Solution / Dependency-category / Benefits / Risks / ADR-conflict`. Then walks the user through the picked candidate one question at a time, with optional **parallel sub-agent fanout** for "Design It Twice"-style interface exploration. Uses a strict 7-term vocabulary (Module · Interface · Implementation · Depth · Seam · Adapter · Leverage · Locality) and the `replace, don't layer` testing strategy.
+
+  ```
+  npx skills@latest add MKAbuMattar/skills/architecture-audit
+  ```
+
 ## Writing & Editing
 
 - **humanizer** — Edit or review text to remove signs of AI-generated writing. Catches all 29 patterns from Wikipedia's "Signs of AI writing" guide (significance inflation, promotional language, superficial -ing analyses, vague attributions, em-dash overuse, rule-of-three, AI vocabulary, copula avoidance, negative parallelisms, sycophantic openings, and more). Runs the full draft → audit → final loop (asks "what makes this so obviously AI generated?" and revises until the answer is honest). Supports voice calibration when given a writing sample.
@@ -111,6 +117,7 @@ ln -s "$PWD/skills/humanizer"                 ~/.claude/skills/
 ln -s "$PWD/skills/deep-discovery"            ~/.claude/skills/
 ln -s "$PWD/skills/plan-interview"            ~/.claude/skills/
 ln -s "$PWD/skills/pre-commit-setup"          ~/.claude/skills/
+ln -s "$PWD/skills/architecture-audit"        ~/.claude/skills/
 ```
 
 For other clients, see each tool's skill discovery path in the [client showcase](https://agentskills.io/clients).
