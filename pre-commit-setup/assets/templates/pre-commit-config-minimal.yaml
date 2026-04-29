@@ -1,0 +1,33 @@
+# Minimal .pre-commit-config.yaml — universal hooks only.
+# Use this when language detection failed or for repos that don't have a
+# specific language toolchain (e.g., docs-only, infra-only, scripts-only).
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: check-added-large-files
+        args: ["--maxkb=500"]
+      - id: check-json
+      - id: check-yaml
+        args: [--unsafe]
+      - id: check-toml
+      - id: detect-private-key
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.4
+    hooks:
+      - id: gitleaks
+
+exclude: |
+  (?x)^(
+    .*\.(lock|lockb)|
+    .*lock\.json|
+    .*-lock\.yaml
+  )$

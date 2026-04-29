@@ -34,6 +34,14 @@ Tools for building more skills.
   npx skills@latest add MKAbuMattar/skills/skill-builder
   ```
 
+## Repo Hygiene
+
+- **pre-commit-setup** — Wire **cross-language pre-commit hooks** into any git repository. Detects which languages the repo uses (Node.js / TypeScript, Python, PHP, Java, Go, Rust, Ruby, Shell, Terraform, Markdown) and configures the right formatter / linter / type-checker per language via the universal `pre-commit` framework. Always adds universal hygiene (whitespace, EOF, large-file detection, merge-conflict markers, JSON/YAML/TOML validation), secret scanning (gitleaks), and Conventional Commits enforcement (commitizen / commitlint / regex fallback). Optional **Husky + lint-staged + Prettier** track for pure-Node repos. Ships templates for kitchen-sink and minimal configs, a `detect-languages.sh` script, and a worked polyglot example.
+
+  ```
+  npx skills@latest add MKAbuMattar/skills/pre-commit-setup
+  ```
+
 ## QA & Issue Tracking
 
 - **qa** — Run an interactive QA session: capture user-described bugs, ask brief clarifying questions, explore the codebase for domain context, decide single-vs-breakdown, and file durable user-focused GitHub issues via `gh issue create` — without referencing internal file paths or line numbers. Ships ready-to-fill single-issue and breakdown-subissue body templates.
@@ -64,6 +72,18 @@ Tools for building more skills.
   npx skills@latest add MKAbuMattar/skills/information-architecture
   ```
 
+- **deep-discovery** — Run a rigorous **100-question self-interrogation** that exhaustively stress-tests an idea, design, architecture, plan, strategy, product, business idea, trading system, patch, or skill/plugin proposal before committing. Each question builds on the previous answer; phases run from foundation → mechanics → stress testing → competitive analysis → feasibility → refinement → synthesis. Supports **evaluation / exploration / comparison** modes and routes to one of six domain patterns (software architecture, code review, skill-and-plugin creation, business/product, trading/financial, general). Output is a brutally honest synthesis: top issues, top strengths, recommended changes, revised proposal, bottom-line verdict.
+
+  ```
+  npx skills@latest add MKAbuMattar/skills/deep-discovery
+  ```
+
+- **plan-interview** — Interactive complement to `deep-discovery`. Interview the user **one question at a time, branch-by-branch**, until every decision in their plan or design is resolved. Each question ships with a **recommended answer and short rationale**, so the user reacts instead of generating from scratch. Builds and updates a decision tree across turns; sequences questions by dependency (high-leverage first); resolves anything answerable from the codebase by reading code instead of asking. Stops when the tree is empty or the user calls "stop".
+
+  ```
+  npx skills@latest add MKAbuMattar/skills/plan-interview
+  ```
+
 ## Writing & Editing
 
 - **humanizer** — Edit or review text to remove signs of AI-generated writing. Catches all 29 patterns from Wikipedia's "Signs of AI writing" guide (significance inflation, promotional language, superficial -ing analyses, vague attributions, em-dash overuse, rule-of-three, AI vocabulary, copula avoidance, negative parallelisms, sycophantic openings, and more). Runs the full draft → audit → final loop (asks "what makes this so obviously AI generated?" and revises until the answer is honest). Supports voice calibration when given a writing sample.
@@ -88,6 +108,9 @@ ln -s "$PWD/skills/information-architecture"  ~/.claude/skills/
 ln -s "$PWD/skills/gitops-pipeline-developer" ~/.claude/skills/
 ln -s "$PWD/skills/gitops-cd-developer"       ~/.claude/skills/
 ln -s "$PWD/skills/humanizer"                 ~/.claude/skills/
+ln -s "$PWD/skills/deep-discovery"            ~/.claude/skills/
+ln -s "$PWD/skills/plan-interview"            ~/.claude/skills/
+ln -s "$PWD/skills/pre-commit-setup"          ~/.claude/skills/
 ```
 
 For other clients, see each tool's skill discovery path in the [client showcase](https://agentskills.io/clients).
