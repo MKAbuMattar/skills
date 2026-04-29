@@ -1,0 +1,208 @@
+# Kitchen-sink .pre-commit-config.yaml — covers every language this skill knows about.
+# Strip down to only the languages the repo actually uses before committing.
+# Pin all `rev:` values; run `pre-commit autoupdate` to bump them.
+
+repos:
+  # ---------------------------------------------------------------
+  # Universal hooks (run for every repo)
+  # ---------------------------------------------------------------
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: check-symlinks
+      - id: destroyed-symlinks
+      - id: check-added-large-files
+        args: ["--maxkb=500"]
+      - id: check-json
+      - id: check-yaml
+        args: [--unsafe]
+      - id: check-toml
+      - id: detect-private-key
+      - id: detect-aws-credentials
+        args: ["--allow-missing-credentials"]
+
+  # Secret scanning (pick gitleaks OR detect-secrets, not both)
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.4
+    hooks:
+      - id: gitleaks
+
+  # Spell-check (optional)
+  - repo: https://github.com/crate-ci/typos
+    rev: v1.24.6
+    hooks:
+      - id: typos
+
+  # ---------------------------------------------------------------
+  # Node.js / TypeScript
+  # ---------------------------------------------------------------
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v3.1.0
+    hooks:
+      - id: prettier
+        files: \.(js|jsx|ts|tsx|json|md|yml|yaml|html|css|scss)$
+
+  - repo: https://github.com/pre-commit/mirrors-eslint
+    rev: v9.10.0
+    hooks:
+      - id: eslint
+        files: \.(js|jsx|ts|tsx)$
+        types: [file]
+        additional_dependencies:
+          - eslint@9.10.0
+          - typescript-eslint@8.6.0
+
+  # ---------------------------------------------------------------
+  # Python
+  # ---------------------------------------------------------------
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.11.2
+    hooks:
+      - id: mypy
+        args: [--ignore-missing-imports]
+        stages: [pre-push]
+
+  # ---------------------------------------------------------------
+  # Go
+  # ---------------------------------------------------------------
+  - repo: https://github.com/dnephin/pre-commit-golang
+    rev: v0.5.1
+    hooks:
+      - id: go-fmt
+      - id: go-imports
+      - id: golangci-lint
+
+  # ---------------------------------------------------------------
+  # Rust
+  # ---------------------------------------------------------------
+  - repo: https://github.com/doublify/pre-commit-rust
+    rev: v1.0
+    hooks:
+      - id: fmt
+      - id: clippy
+        args: ["--", "-D", "warnings"]
+
+  # ---------------------------------------------------------------
+  # Ruby
+  # ---------------------------------------------------------------
+  - repo: https://github.com/rubocop/rubocop
+    rev: v1.66.1
+    hooks:
+      - id: rubocop
+        args: [--autocorrect]
+
+  # ---------------------------------------------------------------
+  # Shell
+  # ---------------------------------------------------------------
+  - repo: https://github.com/scop/pre-commit-shfmt
+    rev: v3.9.0-1
+    hooks:
+      - id: shfmt
+        args: [-i, "2", -ci, -w]
+
+  - repo: https://github.com/koalaman/shellcheck-precommit
+    rev: v0.10.0
+    hooks:
+      - id: shellcheck
+        args: [--severity=warning]
+
+  # ---------------------------------------------------------------
+  # Java (uses local hooks — needs Maven or Gradle on PATH)
+  # ---------------------------------------------------------------
+  - repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
+    rev: v2.14.0
+    hooks:
+      - id: pretty-format-java
+        args: [--autofix, --aosp]
+
+  - repo: local
+    hooks:
+      - id: checkstyle
+        name: Checkstyle
+        entry: ./gradlew checkstyleMain # or `mvn checkstyle:check` for Maven
+        language: system
+        types: [java]
+        pass_filenames: false
+        stages: [pre-push]
+
+  # ---------------------------------------------------------------
+  # PHP (uses local hooks — needs composer-installed binaries)
+  # ---------------------------------------------------------------
+  - repo: local
+    hooks:
+      - id: php-cs-fixer
+        name: PHP CS Fixer
+        entry: vendor/bin/php-cs-fixer fix
+        language: system
+        types: [php]
+        pass_filenames: true
+
+      - id: phpstan
+        name: PHPStan
+        entry: vendor/bin/phpstan analyse --no-progress --error-format=raw
+        language: system
+        types: [php]
+        pass_filenames: false
+        stages: [pre-push]
+
+  # ---------------------------------------------------------------
+  # Terraform / HCL
+  # ---------------------------------------------------------------
+  - repo: https://github.com/antonbabenko/pre-commit-terraform
+    rev: v1.96.1
+    hooks:
+      - id: terraform_fmt
+      - id: terraform_validate
+      - id: terraform_tflint
+
+  # ---------------------------------------------------------------
+  # Markdown
+  # ---------------------------------------------------------------
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.42.0
+    hooks:
+      - id: markdownlint
+        args: ["--disable", "MD013", "MD041", "--"]
+
+  # ---------------------------------------------------------------
+  # Conventional Commits (commit-msg stage)
+  # ---------------------------------------------------------------
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v3.29.1
+    hooks:
+      - id: commitizen
+        stages: [commit-msg]
+
+# Common per-repo exclusions
+exclude: |
+  (?x)^(
+    dist/.*|
+    build/.*|
+    target/.*|
+    vendor/.*|
+    node_modules/.*|
+    \.next/.*|
+    coverage/.*|
+    .*\.min\.(js|css)|
+    .*\.(lock|lockb)|
+    package-lock\.json|
+    pnpm-lock\.yaml|
+    yarn\.lock|
+    composer\.lock|
+    Cargo\.lock|
+    Gemfile\.lock|
+    poetry\.lock
+  )$
