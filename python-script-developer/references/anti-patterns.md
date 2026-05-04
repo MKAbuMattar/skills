@@ -84,7 +84,7 @@ logger.info("Loading %s", filename)
 logger.error("Operation failed: %s", e)
 ```
 
-`print` is reserved for the script's actual *output* — the structured data the caller will pipe or parse.
+`print` is reserved for the script's actual _output_ — the structured data the caller will pipe or parse.
 
 ## 6. Missing docstrings on public functions
 

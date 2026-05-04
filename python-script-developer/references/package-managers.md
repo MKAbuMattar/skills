@@ -17,14 +17,14 @@ Load this on the first run of a session that requires non-stdlib packages.
 
 ## Install commands
 
-| Manager  | Install single package    | Run a one-off tool       |
-| -------- | ------------------------- | ------------------------ |
-| `uv`     | `uv pip install <pkg>`    | `uvx <tool>`             |
-| `pip`    | `pip install <pkg>`       | `pipx run <tool>`        |
-| `poetry` | `poetry add <pkg>`        | `poetry run <tool>`      |
-| `pipenv` | `pipenv install <pkg>`    | `pipenv run <tool>`      |
-| `conda`  | `conda install <pkg>`     | n/a                      |
-| `pdm`    | `pdm add <pkg>`           | `pdm run <tool>`         |
+| Manager  | Install single package | Run a one-off tool  |
+| -------- | ---------------------- | ------------------- |
+| `uv`     | `uv pip install <pkg>` | `uvx <tool>`        |
+| `pip`    | `pip install <pkg>`    | `pipx run <tool>`   |
+| `poetry` | `poetry add <pkg>`     | `poetry run <tool>` |
+| `pipenv` | `pipenv install <pkg>` | `pipenv run <tool>` |
+| `conda`  | `conda install <pkg>`  | n/a                 |
+| `pdm`    | `pdm add <pkg>`        | `pdm run <tool>`    |
 
 ## Default
 

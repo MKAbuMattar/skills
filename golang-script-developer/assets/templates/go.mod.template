@@ -1,0 +1,8 @@
+module github.com/<owner>/<repo>
+
+go 1.23
+
+// Add only what you actually need. Avoid leaving placeholders.
+require (
+	golang.org/x/sync v0.10.0
+)

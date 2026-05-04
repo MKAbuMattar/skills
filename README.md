@@ -18,6 +18,24 @@ Production-ready scripts with proper error handling, validated input, and cross-
   npx skills@latest add MKAbuMattar/skills/python-script-developer
   ```
 
+- **javascript-script-developer** — Write production-ready Node.js CLI tools and automation scripts in modern JavaScript — ESM by default, argument parsing via the built-in `node:util` `parseArgs`, structured stderr logging, `node:fs/promises`, specific Error subclasses for distinct failure modes, top-level await, graceful SIGINT/SIGTERM handling, and cross-platform support. Targets Node.js 20 LTS+; mentions Bun and Deno as alternative runtimes.
+
+  ```
+  npx skills@latest add MKAbuMattar/skills/javascript-script-developer
+  ```
+
+- **typescript-script-developer** — Write production-ready TypeScript CLI tools with strict type-checking — TypeScript 5.x with strict mode tsconfig (incl. `noUncheckedIndexedAccess` and `verbatimModuleSyntax`), ESM, type-safe argv via `parseArgs`, discriminated-union error classes with exhaustiveness checks via `assertNever`, branded types where useful, `unknown` in catch blocks. Run via tsx (default), Bun, or Deno; build for distribution with `tsc`. Targets Node.js 20 LTS+ and TypeScript 5.4+.
+
+  ```
+  npx skills@latest add MKAbuMattar/skills/typescript-script-developer
+  ```
+
+- **golang-script-developer** — Write production-ready Go CLI tools with idiomatic patterns — Go modules layout, the standard library `flag` package by default (cobra/urfave-cli for complex CLIs), structured logging via `log/slog`, error wrapping with `fmt.Errorf %w` plus `errors.Is`/`errors.As`, `context.Context` for cancellation, `signal.NotifyContext` for graceful SIGINT/SIGTERM, distinct exit codes via typed `*exitError`, embedded assets via `//go:embed`, `errgroup` for concurrency, and cross-compile single-binary support (GOOS/GOARCH). Targets Go 1.22+.
+
+  ```
+  npx skills@latest add MKAbuMattar/skills/golang-script-developer
+  ```
+
 - **makefile-script-developer** — Write production-ready GNU Makefiles with strict shell mode (`SHELL := /bin/bash` + `.SHELLFLAGS := -euo pipefail -c`), validated multi-environment configuration, pre-flight check targets, structured logging, confirmation gates for destructive ops, and self-documenting help. Includes templates for simple build/test, Terraform multi-env, Helm deploy/recover, chart packaging, and cross-platform binary builds.
 
   ```
@@ -107,6 +125,9 @@ git clone https://github.com/MKAbuMattar/skills.git
 mkdir -p ~/.claude/skills
 ln -s "$PWD/skills/linux-script-developer"    ~/.claude/skills/
 ln -s "$PWD/skills/python-script-developer"   ~/.claude/skills/
+ln -s "$PWD/skills/javascript-script-developer" ~/.claude/skills/
+ln -s "$PWD/skills/typescript-script-developer" ~/.claude/skills/
+ln -s "$PWD/skills/golang-script-developer"   ~/.claude/skills/
 ln -s "$PWD/skills/makefile-script-developer" ~/.claude/skills/
 ln -s "$PWD/skills/skill-builder"             ~/.claude/skills/
 ln -s "$PWD/skills/qa"                        ~/.claude/skills/

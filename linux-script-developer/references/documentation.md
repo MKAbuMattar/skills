@@ -1,6 +1,6 @@
 # Reference Documentation Template
 
-Every script needs accompanying AWS-style reference documentation — either inline as a markdown block at the top of the script, or as a sibling `<script-name>.md`.
+Every script needs accompanying man-page-style reference documentation — either inline as a markdown block at the top of the script, or as a sibling `<script-name>.md`.
 
 ## Rules
 
