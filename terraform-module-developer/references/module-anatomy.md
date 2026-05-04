@@ -68,7 +68,9 @@ Every variable starts with `<prefix>_`. The `<prefix>_create` toggle is always f
 
 ```hcl
 variable "<prefix>_create" {
-  description = "Controls if <resource> should be created"
+  description = <<-EOT
+    Controls if <resource> should be created
+  EOT
   type        = bool
   default     = true
 }
