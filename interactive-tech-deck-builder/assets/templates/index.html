@@ -1,0 +1,2228 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Kubernetes Fundamentals</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css"
+    />
+  </head>
+  <body>
+    <canvas id="bg-canvas"></canvas>
+
+    <div class="ui-frame">
+      <div class="section-label" id="section-label"></div>
+      <div class="slide-counter" id="slide-counter">1 / 50</div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progress-fill"></div>
+      </div>
+    </div>
+
+    <div class="help-overlay" id="help-overlay">
+      <div class="help-card">
+        <h2>Keyboard</h2>
+        <table>
+          <tr>
+            <td><kbd>→</kbd> <kbd>Space</kbd></td>
+            <td>Next slide / build</td>
+          </tr>
+          <tr>
+            <td><kbd>←</kbd></td>
+            <td>Previous</td>
+          </tr>
+          <tr>
+            <td><kbd>Home</kbd></td>
+            <td>Jump to start</td>
+          </tr>
+          <tr>
+            <td><kbd>End</kbd></td>
+            <td>Jump to end</td>
+          </tr>
+          <tr>
+            <td><kbd>S</kbd></td>
+            <td>Toggle speaker notes</td>
+          </tr>
+          <tr>
+            <td><kbd>O</kbd></td>
+            <td>Slide overview</td>
+          </tr>
+          <tr>
+            <td><kbd>F</kbd></td>
+            <td>Fullscreen</td>
+          </tr>
+          <tr>
+            <td><kbd>D</kbd></td>
+            <td>Open kubectl demo</td>
+          </tr>
+          <tr>
+            <td><kbd>?</kbd></td>
+            <td>This help</td>
+          </tr>
+          <tr>
+            <td><kbd>Esc</kbd></td>
+            <td>Close overlays</td>
+          </tr>
+        </table>
+        <p class="hint">Press any key to dismiss</p>
+      </div>
+    </div>
+
+    <aside class="notes-panel" id="notes-panel"></aside>
+    <div class="overview-grid" id="overview-grid"></div>
+
+    <main class="deck" id="deck">
+      <!-- ================== SECTION 1: OPENING (teal) ================== -->
+
+      <section
+        class="slide title-slide"
+        data-section="Opening"
+        data-color="teal"
+        data-scene="particles"
+      >
+        <div class="title-wrap">
+          <h1 class="mega">
+            Kubernetes<br /><span class="dim">Fundamentals</span>
+          </h1>
+          <p class="subtitle">
+            From Docker containers to a self-managing fleet
+          </p>
+        </div>
+        <div class="presenter-footer">
+          Pragmatic K8s for backend &amp; frontend devs · Press <kbd>?</kbd> for
+          help
+        </div>
+        <aside class="notes">
+          Welcome. This is part two of the container journey. Docker showed you
+          how to package an app. This deck shows you how to operate a hundred of
+          them.
+        </aside>
+      </section>
+
+      <section class="slide" data-section="Opening" data-color="teal">
+        <div class="content-wrap">
+          <p class="kicker">WHY WE'RE HERE</p>
+          <h2 class="headline">Goals for today</h2>
+          <ul class="bullets stagger">
+            <li>
+              <strong>Why we moved</strong> — from VMs and bare containers to
+              Kubernetes
+            </li>
+            <li>
+              <strong>The mental model</strong> — pods, deployments, services,
+              control plane
+            </li>
+            <li><strong>The win</strong> — self-healing and elastic scaling</li>
+            <li>
+              <strong>Our setup</strong> — &lt;Cloud Provider&gt; compute + managed Kubernetes + container registry
+              Enterprise
+            </li>
+            <li>
+              <strong>Your cluster</strong> — what's actually running, right now
+            </li>
+          </ul>
+        </div>
+        <aside class="notes">
+          Five takeaways. The last one is special — we'll look at our actual
+          cluster, with real numbers, at the end.
+        </aside>
+      </section>
+
+      <section class="slide" data-section="Opening" data-color="teal">
+        <div class="content-wrap">
+          <p class="kicker">AUDIENCE</p>
+          <h2 class="headline">"How do I run 50 containers?"</h2>
+          <p class="subtitle muted">
+            If that question has come up — Kubernetes is the answer.
+          </p>
+        </div>
+        <aside class="notes">
+          Show of hands — who's run docker compose in production? Good. That's
+          where this question first hits. K8s is what you reach for when one
+          machine isn't enough.
+        </aside>
+      </section>
+
+      <!-- ================== SECTION 2: WHY KUBERNETES (red) ================== -->
+
+      <section
+        class="slide divider-slide"
+        data-section="Why Kubernetes"
+        data-color="red"
+        data-scene="aurora"
+      >
+        <div class="divider-wrap">
+          <p class="part">PART 1</p>
+          <h2 class="headline">Containers shipped. Now what?</h2>
+        </div>
+        <aside class="notes">
+          Containers solved packaging. Now we have a different problem: keeping
+          them alive, balanced, scaled, and healthy without a human in the loop.
+        </aside>
+      </section>
+
+      <section
+        class="slide big-statement"
+        data-section="Why Kubernetes"
+        data-color="red"
+      >
+        <div class="content-wrap">
+          <p class="kicker">THE PROBLEM</p>
+          <h2 class="mega-statement">
+            Docker packaged the app.<br />Who packages the<br /><span
+              class="dim"
+              >operations?</span
+            >
+          </h2>
+        </div>
+        <aside class="notes">
+          When containers were new, the joy was: my app runs anywhere. Then
+          someone said "great, now run 30 of them across 5 servers, restart the
+          dead ones, and reroute traffic when one fails." That's the gap K8s
+          fills.
+        </aside>
+      </section>
+
+      <section class="slide" data-section="Why Kubernetes" data-color="red">
+        <div class="content-wrap">
+          <p class="kicker">THE PROBLEM</p>
+          <h2 class="headline">Without Kubernetes</h2>
+          <ul class="bullets stagger cross">
+            <li>Container crashed at 3am? You wake up</li>
+            <li>Traffic spiked? Manual scale-up, manually scale down later</li>
+            <li>Deploying v2? SSH into 10 servers in order</li>
+            <li>Server died? Pages, panic, partial outage</li>
+            <li>Need rollback? Hope you kept the last image around</li>
+          </ul>
+        </div>
+        <aside class="notes">
+          Every line is a real on-call story. They're operational gaps that
+          containers alone don't close. Each one is fixable manually — until you
+          have a hundred of them at once.
+        </aside>
+      </section>
+
+      <section class="slide" data-section="Why Kubernetes" data-color="red">
+        <div class="content-wrap">
+          <p class="kicker">THE PROBLEM</p>
+          <h2 class="headline">The 3 a.m. pager</h2>
+          <p class="subtitle muted">
+            Most outages are routine: something fell over, restart it. The cost
+            is human attention at the worst hour.
+          </p>
+        </div>
+        <aside class="notes">
+          90% of pages are "did you try restarting it." K8s does that
+          automatically — your watch goes silent for the routine stuff, you only
+          get woken for the hard problems.
+        </aside>
+      </section>
+
+      <section
+        class="slide big-statement"
+        data-section="Why Kubernetes"
+        data-color="red"
+      >
+        <div class="content-wrap">
+          <p class="kicker">THE INSIGHT</p>
+          <h2 class="mega-statement">
+            Containers are the unit.<br />Kubernetes is the<br />operating
+            system.
+          </h2>
+        </div>
+        <aside class="notes">
+          If a container is a process, Kubernetes is the OS for your fleet. It
+          schedules, restarts, networks, scales, and monitors — for any number
+          of containers across any number of hosts.
+        </aside>
+      </section>
+
+      <!-- ================== SECTION 3: WHEN TO USE (purple) ================== -->
+
+      <section
+        class="slide divider-slide"
+        data-section="When to Use"
+        data-color="purple"
+        data-scene="aurora"
+      >
+        <div class="divider-wrap">
+          <p class="part">PART 2</p>
+          <h2 class="headline">When to reach for it</h2>
+        </div>
+        <aside class="notes">
+          K8s isn't free. Before we sell it, the same honesty as last time —
+          when does it actually pay off.
+        </aside>
+      </section>
+
+      <section class="slide" data-section="When to Use" data-color="purple">
+        <div class="content-wrap">
+          <p class="kicker">WHEN TO USE</p>
+          <h2 class="headline">Use Kubernetes when</h2>
+          <ul class="bullets stagger check">
+            <li>You run more than ~5 services</li>
+            <li>Traffic varies enough to need autoscaling</li>
+            <li>You need rolling, zero-downtime deploys</li>
+            <li>Self-healing is worth a platform investment</li>
+            <li>You're already on a cloud with managed K8s</li>
+          </ul>
+        </div>
+        <aside class="notes">
+          Any one of these justifies it. Two or more and you're paying the
+          operational tax without K8s anyway — better to spend it once on the
+          platform.
+        </aside>
+      </section>
+
+      <section class="slide" data-section="When to Use" data-color="purple">
+        <div class="content-wrap">
+          <p class="kicker">WHEN NOT TO USE</p>
+          <h2 class="headline">Skip Kubernetes when</h2>
+          <ul class="bullets stagger cross">
+            <li>One service, one machine, low traffic</li>
+            <li>Static site behind a CDN</li>
+            <li>No platform team and no managed offering</li>
+            <li>Prototype with a 3-month runway</li>
+          </ul>
+        </div>
+        <aside class="notes">
+          If you're a 2-person startup with one service, K8s is
+          over-engineering. A single VM and `docker compose` will get you to
+          product-market fit faster.
+        </aside>
+      </section>
+
+      <section class="slide" data-section="When to Use" data-color="purple">
+        <div class="content-wrap">
+          <p class="kicker">THE TRADEOFF</p>
+          <h2 class="headline">K8s isn't free</h2>
+          <p class="subtitle muted">
+            You trade manual ops for a learning curve and a control plane to
+            operate.
+          </p>
+        </div>
+        <aside class="notes">
+          There's a real complexity tax. The reason it's worth it: that
+          complexity is centralized, debugged once, and pays off across every
+          service you'll ever ship.
+        </aside>
+      </section>
+
+      <!-- ================== SECTION 4: VMs → K8s (amber) ================== -->
+
+      <section
+        class="slide divider-slide"
+        data-section="From VMs to K8s"
+        data-color="amber"
+        data-scene="aurora"
+      >
+        <div class="divider-wrap">
+          <p class="part">PART 3</p>
+          <h2 class="headline">From VMs to Kubernetes</h2>
+        </div>
+        <aside class="notes">
+          A short story: how we got here, and why moving from VMs to K8s isn't
+          just "smaller boxes."
+        </aside>
+      </section>
+
+      <section class="slide" data-section="From VMs to K8s" data-color="amber">
+        <div class="content-wrap">
+          <p class="kicker">THE JOURNEY</p>
+          <h2 class="headline">Four eras of deployment</h2>
+          <div class="evolution">
+            <div class="era">
+              <span class="era-tag">2000s</span>
+              <h3>Bare metal</h3>
+              <p>One server, one app. Provisioning weeks.</p>
+            </div>
+            <div class="era">
+              <span class="era-tag">2010s</span>
+              <h3>VMs</h3>
+              <p>Many guests per host. Provisioning hours.</p>
+            </div>
+            <div class="era">
+              <span class="era-tag">Late 2010s</span>
+              <h3>Containers</h3>
+              <p>Light, fast, dense. Provisioning seconds.</p>
+            </div>
+            <div class="era highlight">
+              <span class="era-tag">Now</span>
+              <h3>Kubernetes</h3>
+              <p>Self-managing fleet. Declarative ops.</p>
+            </div>
+          </div>
+        </div>
+        <aside class="notes">
+          Each era reduced two costs: time-to-deploy and
+          people-needed-to-deploy. K8s reduced a third: cognitive load — you
+          describe what you want, not how to do it.
+        </aside>
+      </section>
+
+      <section
+        class="slide big-statement"
+        data-section="From VMs to K8s"
+        data-color="amber"
+      >
+        <div class="content-wrap">
+          <p class="kicker">THE SHIFT</p>
+          <h2 class="mega-statement">
+            Stop managing servers.<br />Start describing<br /><span class="dim"
+              >desired state.</span
+            >
+          </h2>
+        </div>
+        <aside class="notes">
+          This is the philosophical shift. With VMs you manage machines. With
+          K8s you write a YAML that says "I want 3 of these," and the system
+          makes it true and keeps it true.
+        </aside>
+      </section>
+
+      <section class="slide" data-section="From VMs to K8s" data-color="amber">
+        <div class="content-wrap">
+          <p class="kicker">VMs vs K8s</p>
+          <h2 class="headline">What changes when you move</h2>
+          <table class="threat-table">
+            <thead>
+              <tr>
+                <th>VM era</th>
+                <th>K8s era</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Provision the VM, install the app</td>
+                <td>Push image, write Deployment</td>
+              </tr>
+              <tr>
+                <td>SSH to fix issues</td>
+                <td>kubectl logs, kubectl describe</td>
+              </tr>
+              <tr>
+                <td>Manual scaling, manual failover</td>
+                <td>Replicas + HPA + self-heal</td>
+              </tr>
+              <tr>
+                <td>Snowflake servers</td>
+                <td>Cattle, not pets</td>
+              </tr>
+              <tr>
+                <td>Static IPs and load balancers</td>
+                <td>Services and Ingress</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <aside class="notes">
+          Five rows that change everything. The cattle-not-pets phrase is old
+          but accurate: in K8s, no individual node or pod matters — the system
+          replaces them all the time.
+        </aside>
+      </section>
+
+      <section class="slide" data-section="From VMs to K8s" data-color="amber">
+        <div class="content-wrap">
+          <p class="kicker">THE PAYOFF</p>
+          <h2 class="headline">What you stop doing</h2>
+          <ul class="bullets stagger">
+            <li>Logging into servers to restart things</li>
+            <li>Hand-rolling load balancer config</li>
+            <li>Patching OS packages on each VM</li>
+            <li>Writing bespoke deployment scripts</li>
+            <li>Calling cloud APIs to add capacity</li>
+          </ul>
+        </div>
+        <aside class="notes">
+          Five jobs that disappear. They become declarative — described in YAML,
+          executed by the platform. The platform pays the operational cost once,
+          not per-service.
+        </aside>
+      </section>
+
+      <!-- Manual vs Docker vs K8s — side-by-side -->
+      <section class="slide" data-section="From VMs to K8s" data-color="amber">
+        <div class="content-wrap">
+          <p class="kicker">DEPLOY ONE SERVICE</p>
+          <h2 class="headline">Three eras, three commands</h2>
+          <div class="three-col-cmd">
+            <div class="col-card manual">
+              <span class="col-tag">Manual</span>
+              <pre><code>ssh prod-01
+sudo apt install nginx
+git pull
+npm ci &amp;&amp; npm run build
+pm2 start ecosystem.json
+sudo systemctl reload nginx
+# repeat on prod-02, prod-03 ...</code></pre>
+            </div>
+            <div class="col-card docker">
+              <span class="col-tag">Docker</span>
+              <pre><code>scp docker-compose.yml prod:/srv/
+ssh prod
+docker compose pull
+docker compose up -d
+# repeat on every host</code></pre>
+            </div>
+            <div class="col-card kube">
+              <span class="col-tag">Kubernetes</span>
+              <pre><code>git push origin main
+# ArgoCD detects, pulls from SWR,
+# applies manifest, rolling update,
+# self-heals.
+# Done.</code></pre>
+            </div>
+          </div>
+        </div>
+        <aside class="notes">
+          Same goal — deploy one service to production. Manual: pages of steps,
+          repeated per host. Docker: still per-host. K8s: one git push triggers
+          everything, including rollout, healing, and observability.
+        </aside>
+      </section>
+
+      <!-- Why Docker alone isn't enough -->
+      <section class="slide" data-section="From VMs to K8s" data-color="amber">
+        <div class="content-wrap">
+          <p class="kicker">DOCKER → KUBERNETES</p>
+          <h2 class="headline">Why we moved on from Docker alone</h2>
+          <div class="two-col-list">
+            <div class="col-list docker-pain">
+              <h4>What Docker / compose can't do</h4>
+              <ul>
+                <li>Restart a dead container on another host</li>
+                <li>Roll out a new version without downtime</li>
+                <li>Scale by traffic, not by guessing</li>
+                <li>Reschedule when a host dies</li>
+                <li>Coordinate across more than one machine</li>
+                <li>Discover services by name across hosts</li>
+              </ul>
+            </div>
+            <div class="col-list k8s-win">
+              <h4>What Kubernetes does for you</h4>
+              <ul>
+                <li>Declarative spec → reconciled continuously</li>
+                <li>Rolling, blue-green, canary deploys</li>
+                <li>HPA, VPA, Cluster Autoscaler</li>
+                <li>Pod evictions and rescheduling</li>
+                <li>Service discovery built-in</li>
+                <li>Native ingress, secrets, configs, RBAC</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <aside class="notes">
+          This is the why. Docker shipped the package. Kubernetes ships the
+          system that runs the packages. Every line on the right was a
+          Friday-night incident on the left.
+        </aside>
+      </section>
+
+      <!-- Deploy Race game: Manual vs Docker vs K8s -->
+      <section
+        class="slide game-slide has-fullscreen"
+        data-section="From VMs to K8s"
+        data-color="amber"
+        data-scene="deploy-race"
+      >
+        <button class="fs-toggle" data-fs-toggle>▶ Play full-screen</button>
+        <div class="content-wrap split game-wrap">
+          <div class="left">
+            <p class="kicker">THE RACE</p>
+            <h2 class="headline">Deploy 10 services.<br />Three approaches.</h2>
+            <p class="subtitle muted">
+              Each lane carries one deploy at a time. Watch how fast each
+              finishes.
+            </p>
+
+            <div class="race-legend">
+              <div class="legend-item" style="--accent: var(--accent-rose)">
+                <span
+                  class="legend-swatch"
+                  style="
+                    background: var(--accent-rose);
+                    box-shadow: 0 0 12px var(--accent-rose);
+                  "
+                ></span>
+                <div>
+                  <strong>Manual</strong>
+                  <span class="legend-detail"
+                    >SSH · install · build · restart · repeat</span
+                  >
+                </div>
+              </div>
+              <div class="legend-item" style="--accent: var(--accent-amber)">
+                <span
+                  class="legend-swatch"
+                  style="
+                    background: var(--accent-amber);
+                    box-shadow: 0 0 12px var(--accent-amber);
+                  "
+                ></span>
+                <div>
+                  <strong>Docker</strong>
+                  <span class="legend-detail">scp + compose up — per host</span>
+                </div>
+              </div>
+              <div class="legend-item" style="--accent: var(--accent-green)">
+                <span
+                  class="legend-swatch"
+                  style="
+                    background: var(--accent-green);
+                    box-shadow: 0 0 12px var(--accent-green);
+                  "
+                ></span>
+                <div>
+                  <strong>Kubernetes</strong>
+                  <span class="legend-detail">git push → ArgoCD → done</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="game-controls">
+              <button class="action-btn big" id="deploy-race-start">
+                ▶ Start race
+              </button>
+              <button class="action-btn ghost" id="deploy-race-reset">
+                ↺ Reset
+              </button>
+            </div>
+          </div>
+
+          <div class="right">
+            <div class="race-clock">
+              <div class="clock-row">
+                <span class="clock-label" style="color: var(--accent-rose)"
+                  >Manual</span
+                >
+                <span class="clock-time" id="dr-manual">0 / 10</span>
+              </div>
+              <div class="clock-row">
+                <span class="clock-label" style="color: var(--accent-amber)"
+                  >Docker</span
+                >
+                <span class="clock-time" id="dr-docker">0 / 10</span>
+              </div>
+              <div class="clock-row">
+                <span class="clock-label" style="color: var(--accent-green)"
+                  >Kubernetes</span
+                >
+                <span class="clock-time" id="dr-kube">0 / 10</span>
+              </div>
+              <div class="clock-divider"></div>
+              <div class="clock-row big">
+                <span class="clock-label">Elapsed</span>
+                <span class="clock-time" id="dr-elapsed">— s</span>
+              </div>
+            </div>
+            <p class="game-toast" id="dr-toast"></p>
+          </div>
+        </div>
+        <aside class="notes">
+          Speed ratios are illustrative — the real-world deltas are bigger.
+          Manual scales linearly with hosts. Docker is per-host but faster. K8s
+          declarative deploys are constant time regardless of cluster size.
+        </aside>
+      </section>
+
+      <!-- ================== SECTION 5: FUNDAMENTALS (green) ================== -->
+
+      <section
+        class="slide divider-slide"
+        data-section="Fundamentals"
+        data-color="green"
+        data-scene="aurora"
+      >
+        <div class="divider-wrap">
+          <p class="part">PART 4</p>
+          <h2 class="headline">Kubernetes fundamentals</h2>
+        </div>
+        <aside class="notes">
+          Just enough to be dangerous. The core objects you'll touch every day.
+        </aside>
+      </section>
+
+      <section class="slide" data-section="Fundamentals" data-color="green">
+        <div class="content-wrap">
+          <p class="kicker">CLUSTER ANATOMY</p>
+          <h2 class="headline">Two halves of a cluster</h2>
+          <div class="cluster-anatomy">
+            <div class="half control-plane">
+              <h3>Control plane</h3>
+              <ul>
+                <li><strong>API server</strong> — the only door in</li>
+                <li><strong>etcd</strong> — the source of truth</li>
+                <li><strong>Scheduler</strong> — picks where pods land</li>
+                <li><strong>Controllers</strong> — drive desired state</li>
+              </ul>
+            </div>
+            <div class="half workers">
+              <h3>Worker nodes</h3>
+              <ul>
+                <li><strong>kubelet</strong> — runs and reports pods</li>
+                <li><strong>kube-proxy</strong> — networks them</li>
+                <li>
+                  <strong>container runtime</strong> — containerd, our case
+                </li>
+                <li><strong>your workloads</strong> — finally, the app</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <aside class="notes">
+          Control plane is the brain — it decides what should run. Workers do
+          the running. In our setup, &lt;Cloud Provider&gt; manages the control plane, we
+          just operate the workers.
+        </aside>
+      </section>
+
+      <section
+        class="slide big-statement"
+        data-section="Fundamentals"
+        data-color="green"
+      >
+        <div class="content-wrap">
+          <p class="kicker">THE UNIT</p>
+          <h2 class="mega-statement">
+            A Pod is the smallest<br />thing K8s schedules.
+          </h2>
+          <p class="subtitle muted">
+            One or more tightly-coupled containers, sharing network and storage.
+          </p>
+        </div>
+        <aside class="notes">
+          If a container is the unit of packaging, a Pod is the unit of
+          scheduling. Most pods have one container. Multi-container pods exist
+          for sidecars — logging agents, service meshes — but start with one.
+        </aside>
+      </section>
+
+      <section class="slide" data-section="Fundamentals" data-color="green">
+        <div class="content-wrap">
+          <p class="kicker">FUNDAMENTALS</p>
+          <h2 class="headline">A Pod, in YAML</h2>
+          <pre class="code-block"><code class="language-yaml">apiVersion: v1
+kind: Pod
+metadata:
+  name: api
+spec:
+  containers:
+    - name: api
+      image: registry.example.com/yourorg/api:v1.4.2
+      ports:
+        - containerPort: 8080
+      resources:
+        requests: { cpu: 100m, memory: 128Mi }
+        limits:   { cpu: 500m, memory: 256Mi }</code></pre>
+        </div>
+        <aside class="notes">
+          You almost never write a raw Pod. You write Deployments and let them
+          generate Pods. But this is the fundamental object — name, image,
+          ports, and resource bounds.
+        </aside>
+      </section>
+
+      <section class="slide" data-section="Fundamentals" data-color="green">
+        <div class="content-wrap">
+          <p class="kicker">FUNDAMENTALS</p>
+          <h2 class="headline">Deployment — desired state</h2>
+          <p class="subtitle muted">
+            "I want 3 of these, always. Roll updates without dropping traffic."
+          </p>
+          <pre
+            class="code-block"
+          ><code class="language-yaml">apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+spec:
+  replicas: 3
+  selector:
+    matchLabels: { app: api }
+  template:
+    metadata:
+      labels: { app: api }
+    spec:
+      containers:
+        - name: api
+          image: registry.example.com/yourorg/api:v1.4.2</code></pre>
+        </div>
+        <aside class="notes">
+          Deployment manages a ReplicaSet which manages Pods. You only write the
+          Deployment. K8s handles rollouts, rollbacks, and replacement.
+        </aside>
+      </section>
+
+      <section class="slide" data-section="Fundamentals" data-color="green">
+        <div class="content-wrap">
+          <p class="kicker">FUNDAMENTALS</p>
+          <h2 class="headline">Service — a stable address</h2>
+          <p class="subtitle muted">
+            Pods come and go. A Service gives them one DNS name.
+          </p>
+          <pre class="code-block"><code class="language-yaml">apiVersion: v1
+kind: Service
+metadata:
+  name: api
+spec:
+  selector: { app: api }
+  ports:
+    - port: 80
+      targetPort: 8080
+# In another pod:  curl http://api  → load-balanced across all api pods</code></pre>
+        </div>
+        <aside class="notes">
+          A Service is internal load-balancing plus DNS. Other pods reach this
+          service by name — they don't know or care which pod answers.
+        </aside>
+      </section>
+
+      <section class="slide" data-section="Fundamentals" data-color="green">
+        <div class="content-wrap">
+          <p class="kicker">FUNDAMENTALS</p>
+          <h2 class="headline">Ingress — the front door</h2>
+          <p class="subtitle muted">
+            Routes external HTTPS traffic into Services. We use an ingress controller (e.g. Kong, Nginx, Traefik).
+          </p>
+          <pre
+            class="code-block"
+          ><code class="language-yaml">apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: api
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: "/"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: api.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: { name: api, port: { number: 80 } }</code></pre>
+        </div>
+        <aside class="notes">
+          Service is internal. Ingress is the public edge — TLS, hostnames,
+          paths. We run an ingress controller; it handles 28 ingresses
+          across our cluster today.
+        </aside>
+      </section>
+
+      <section class="slide" data-section="Fundamentals" data-color="green">
+        <div class="content-wrap">
+          <p class="kicker">FUNDAMENTALS</p>
+          <h2 class="headline">ConfigMaps &amp; Secrets</h2>
+          <ul class="bullets stagger split-list">
+            <li class="do">
+              <strong>ConfigMap</strong> — non-secret config (URLs, flags)
+            </li>
+            <li class="do">
+              <strong>Secret</strong> — encoded values (passwords, tokens)
+            </li>
+            <li class="do">Mount as files OR inject as env vars</li>
+            <li class="dont">Don't bake either into the image</li>
+          </ul>
+        </div>
+        <aside class="notes">
+          Image once, configure per environment. Same image runs in dev,
+          staging, prod — only the ConfigMap and Secrets differ. We layer Vault
+          on top of native Secrets for sensitive material.
+        </aside>
+      </section>
+
+      <section class="slide" data-section="Fundamentals" data-color="green">
+        <div class="content-wrap">
+          <p class="kicker">FUNDAMENTALS</p>
+          <h2 class="headline">Namespaces — soft tenancy</h2>
+          <p class="subtitle muted">
+            Logical partitions for environments, teams, or apps.
+          </p>
+          <pre class="code-block"><code class="language-bash">kubectl get ns
+
+# Real output from our cluster:
+NAME               STATUS   AGE
+argocd             Active   29d
+backend            Active   14d
+cert-manager       Active   50d
+cnpg-system        Active   48d
+default            Active   50d
+dev-007            Active   7d23h
+frontend           Active   14d
+jenkins            Active   48d
+keycloak           Active   17d
+ingress            Active   49d
+kube-system        Active   50d
+monitoring         Active   14d
+… (22 total)</code></pre>
+        </div>
+        <aside class="notes">
+          Real list from our cluster. 22 namespaces — one per platform service
+          plus dev/staging environments. Namespace gives you scope for RBAC,
+          resource quotas, and network policies.
+        </aside>
+      </section>
+
+      <!-- ================== SECTION 6: FLEXIBILITY & SCALING (blue) ================== -->
+
+      <section
+        class="slide divider-slide"
+        data-section="Flexibility &amp; Scaling"
+        data-color="blue"
+        data-scene="aurora"
+      >
+        <div class="divider-wrap">
+          <p class="part">PART 5</p>
+          <h2 class="headline">Flexibility &amp; scaling</h2>
+        </div>
+        <aside class="notes">
+          This is where K8s earns its place. Self-healing, autoscaling, and
+          rolling deploys — for free, once you've described the desired state.
+        </aside>
+      </section>
+
+      <section
+        class="slide big-statement"
+        data-section="Flexibility &amp; Scaling"
+        data-color="blue"
+      >
+        <div class="content-wrap">
+          <p class="kicker">THE PROMISE</p>
+          <h2 class="mega-statement">
+            Describe the goal.<br />Kubernetes figures out<br /><span
+              class="dim"
+              >how to get there.</span
+            >
+          </h2>
+        </div>
+        <aside class="notes">
+          This is declarative ops. You don't say "start a pod" — you say "I want
+          3 pods running this image." K8s reconciles continuously: if one dies,
+          it starts another. If you change the count, it adjusts.
+        </aside>
+      </section>
+
+      <!-- Self-healing interactive demo -->
+      <section
+        class="slide game-slide has-fullscreen"
+        data-section="Flexibility &amp; Scaling"
+        data-color="blue"
+        data-scene="self-healing"
+      >
+        <button class="fs-toggle" data-fs-toggle>▶ Play full-screen</button>
+        <div class="content-wrap split game-wrap">
+          <div class="left">
+            <p class="kicker">SELF-HEALING</p>
+            <h2 class="headline">Kill a pod.<br />Watch it come back.</h2>
+            <p class="subtitle muted">
+              Click any pod to terminate it. K8s spawns a replacement.
+            </p>
+
+            <div class="race-legend">
+              <div class="legend-item container">
+                <span class="legend-swatch"></span>
+                <div>
+                  <strong>Pods</strong>
+                  <span class="legend-detail"
+                    >Click any to "kubectl delete pod"</span
+                  >
+                </div>
+              </div>
+            </div>
+
+            <div class="game-controls">
+              <button class="action-btn big" id="heal-kill-random">
+                ⚡ Kill random pod
+              </button>
+              <button class="action-btn ghost" id="heal-reset">↺ Reset</button>
+            </div>
+          </div>
+
+          <div class="right">
+            <div class="stats-panel">
+              <div class="stat">
+                <div class="stat-label">Desired replicas</div>
+                <div class="stat-value">3</div>
+              </div>
+              <div class="stat">
+                <div class="stat-label">Pods alive</div>
+                <div class="stat-value" id="heal-alive">3</div>
+                <div class="stat-bar">
+                  <div class="stat-bar-fill" id="heal-bar"></div>
+                </div>
+              </div>
+              <div class="stat">
+                <div class="stat-label">Total kills</div>
+                <div class="stat-value" id="heal-kills">0</div>
+              </div>
+              <div class="stat">
+                <div class="stat-label">Total respawns</div>
+                <div class="stat-value" id="heal-respawns">0</div>
+              </div>
+            </div>
+            <p class="game-toast" id="heal-toast"></p>
+          </div>
+        </div>
+        <aside class="notes">
+          Click pods to kill them. K8s detects the replica count is below
+          desired and spawns a new pod within ~1s. This is the loop running 24/7
+          in the cluster.
+        </aside>
+      </section>
+
+      <section
+        class="slide"
+        data-section="Flexibility &amp; Scaling"
+        data-color="blue"
+      >
+        <div class="content-wrap">
+          <p class="kicker">SCALING</p>
+          <h2 class="headline">Three levels of autoscaling</h2>
+          <div class="tier-grid">
+            <div class="tier-card" style="--accent: var(--accent-blue)">
+              <span class="tier-badge">HPA</span>
+              <h3>Horizontal Pod Autoscaler</h3>
+              <p>
+                Adds or removes pod replicas based on CPU, memory, or custom
+                metrics.
+              </p>
+            </div>
+            <div class="tier-card" style="--accent: var(--accent-purple)">
+              <span class="tier-badge">VPA</span>
+              <h3>Vertical Pod Autoscaler</h3>
+              <p>
+                Adjusts CPU/memory requests for existing pods. Useful for
+                right-sizing.
+              </p>
+            </div>
+            <div class="tier-card" style="--accent: var(--accent-green)">
+              <span class="tier-badge">CA</span>
+              <h3>Cluster Autoscaler</h3>
+              <p>
+                Adds or removes nodes (ECS instances) when pods can't be
+                scheduled.
+              </p>
+            </div>
+          </div>
+        </div>
+        <aside class="notes">
+          Three layers, top to bottom. HPA scales pods (most common). VPA
+          right-sizes (less common). Cluster autoscaler adds nodes
+          (cloud-managed). They compose: HPA tries to scale pods, can't fit, CA
+          adds a node.
+        </aside>
+      </section>
+
+      <section
+        class="slide"
+        data-section="Flexibility &amp; Scaling"
+        data-color="blue"
+      >
+        <div class="content-wrap">
+          <p class="kicker">HPA</p>
+          <h2 class="headline">HPA, in YAML</h2>
+          <pre
+            class="code-block"
+          ><code class="language-yaml">apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: api
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: api
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70</code></pre>
+          <p class="hint-line">
+            Already running on the GitOps controller, identity service, and ingress controller in our cluster.
+          </p>
+        </div>
+        <aside class="notes">
+          This is a real config. CPU above 70% → scale up; below → scale down.
+          Bound by min and max so a runaway loop can't bankrupt the company.
+        </aside>
+      </section>
+
+      <!-- Pod-Scaling interactive game -->
+      <section
+        class="slide game-slide has-fullscreen"
+        data-section="Flexibility &amp; Scaling"
+        data-color="blue"
+        data-scene="pod-scaling"
+      >
+        <button class="fs-toggle" data-fs-toggle>▶ Play full-screen</button>
+        <div class="content-wrap split game-wrap">
+          <div class="left">
+            <p class="kicker">HPA RACE</p>
+            <h2 class="headline">Crank the load,<br />watch HPA react.</h2>
+            <p class="subtitle muted">
+              Move the slider. Pods scale up under pressure, scale down when
+              calm.
+            </p>
+
+            <div class="load-control">
+              <label class="load-label"
+                >CPU load <span id="load-value">0%</span></label
+              >
+              <input
+                type="range"
+                id="load-slider"
+                min="0"
+                max="100"
+                value="0"
+                class="load-slider"
+              />
+              <div class="load-track-marks">
+                <span>idle</span>
+                <span class="threshold">70% target</span>
+                <span>peak</span>
+              </div>
+            </div>
+
+            <div class="game-controls">
+              <button class="action-btn ghost" id="scale-reset">↺ Reset</button>
+            </div>
+          </div>
+
+          <div class="right">
+            <div class="stats-panel">
+              <div class="stat">
+                <div class="stat-label">Pods running</div>
+                <div class="stat-value" id="scale-replicas">2 / 10</div>
+                <div class="stat-bar">
+                  <div class="stat-bar-fill" id="scale-bar"></div>
+                </div>
+              </div>
+              <div class="stat">
+                <div class="stat-label">Avg CPU per pod</div>
+                <div class="stat-value" id="scale-cpu">0%</div>
+              </div>
+              <div class="stat">
+                <div class="stat-label">HPA decision</div>
+                <div class="stat-value small" id="scale-decision">stable</div>
+              </div>
+              <div class="stat">
+                <div class="stat-label">Min · Max replicas</div>
+                <div class="stat-value small">2 · 10</div>
+              </div>
+            </div>
+            <p class="game-toast" id="scale-toast"></p>
+          </div>
+        </div>
+        <aside class="notes">
+          As you raise load, average CPU per pod climbs. When it crosses 70%,
+          HPA adds a pod, which lowers per-pod load. Pull the slider down and
+          pods retire over time. This is what happens automatically in
+          production.
+        </aside>
+      </section>
+
+      <section
+        class="slide"
+        data-section="Flexibility &amp; Scaling"
+        data-color="blue"
+      >
+        <div class="content-wrap">
+          <p class="kicker">FLEXIBILITY</p>
+          <h2 class="headline">Rolling updates,<br />zero downtime</h2>
+          <p class="subtitle muted">
+            New pods come up healthy before old pods go down.
+          </p>
+          <pre
+            class="code-block"
+          ><code class="language-bash">kubectl set image deployment/api api=registry.example.com/yourorg/api:v1.4.3
+# K8s spins up a v1.4.3 pod, waits for it to be Ready,
+# then terminates a v1.4.2 pod. Repeat until done.
+
+kubectl rollout status deployment/api
+kubectl rollout undo   deployment/api  # rollback in seconds</code></pre>
+        </div>
+        <aside class="notes">
+          Three commands: deploy, watch, rollback. The platform handles graceful
+          shutdown, readiness probing, traffic shifting. You never write
+          deployment scripts again.
+        </aside>
+      </section>
+
+      <!-- Rolling Deploy interactive scene -->
+      <section
+        class="slide game-slide has-fullscreen"
+        data-section="Flexibility &amp; Scaling"
+        data-color="blue"
+        data-scene="rolling-deploy"
+      >
+        <button class="fs-toggle" data-fs-toggle>▶ Play full-screen</button>
+        <div class="content-wrap split game-wrap">
+          <div class="left">
+            <p class="kicker">ROLLING DEPLOY</p>
+            <h2 class="headline">v1 → v2,<br />without downtime</h2>
+            <p class="subtitle muted">
+              Click to deploy v2. Watch each new pod come up Ready before its v1
+              counterpart is terminated.
+            </p>
+
+            <div class="race-legend">
+              <div class="legend-item" style="--accent: var(--accent-rose)">
+                <span
+                  class="legend-swatch"
+                  style="
+                    background: var(--accent-rose);
+                    box-shadow: 0 0 10px var(--accent-rose);
+                  "
+                ></span>
+                <div>
+                  <strong>v1.4.2</strong>
+                  <span class="legend-detail">current production</span>
+                </div>
+              </div>
+              <div class="legend-item" style="--accent: var(--accent-green)">
+                <span
+                  class="legend-swatch"
+                  style="
+                    background: var(--accent-green);
+                    box-shadow: 0 0 10px var(--accent-green);
+                  "
+                ></span>
+                <div>
+                  <strong>v1.4.3</strong>
+                  <span class="legend-detail">new release</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="game-controls">
+              <button class="action-btn big" id="roll-deploy">
+                ▶ Deploy v1.4.3
+              </button>
+              <button class="action-btn ghost" id="roll-reset">
+                ↺ Reset to v1.4.2
+              </button>
+            </div>
+          </div>
+
+          <div class="right">
+            <div class="stats-panel">
+              <div class="stat">
+                <div class="stat-label">v1 pods (red)</div>
+                <div class="stat-value" id="roll-v1">4</div>
+              </div>
+              <div class="stat">
+                <div class="stat-label">v2 pods (green)</div>
+                <div class="stat-value" id="roll-v2">0</div>
+              </div>
+              <div class="stat">
+                <div class="stat-label">Total alive</div>
+                <div class="stat-value" id="roll-total">4</div>
+                <div class="stat-bar">
+                  <div class="stat-bar-fill" id="roll-bar"></div>
+                </div>
+              </div>
+              <div class="stat">
+                <div class="stat-label">Strategy</div>
+                <div class="stat-value small">RollingUpdate · 25% surge</div>
+              </div>
+            </div>
+            <p class="game-toast" id="roll-toast"></p>
+          </div>
+        </div>
+        <aside class="notes">
+          RollingUpdate strategy — new pods come up before old pods go down.
+          Total alive dips briefly above replicas (the surge), then settles back
+          to 4 on v2. No request was dropped.
+        </aside>
+      </section>
+
+      <!-- Chaos Engineering: kill an entire node -->
+      <section
+        class="slide game-slide has-fullscreen"
+        data-section="Flexibility &amp; Scaling"
+        data-color="blue"
+        data-scene="chaos"
+      >
+        <button class="fs-toggle" data-fs-toggle>▶ Play full-screen</button>
+        <div class="content-wrap split game-wrap">
+          <div class="left">
+            <p class="kicker">CHAOS ENGINEERING</p>
+            <h2 class="headline">
+              Take down a whole node.<br />Watch pods migrate.
+            </h2>
+            <p class="subtitle muted">
+              A node fails. K8s drains pods and reschedules them onto the
+              surviving nodes — automatically.
+            </p>
+
+            <div class="race-legend">
+              <div class="legend-item" style="--accent: var(--accent-rose)">
+                <span
+                  class="legend-swatch"
+                  style="
+                    background: var(--accent-rose);
+                    box-shadow: 0 0 12px var(--accent-rose);
+                  "
+                ></span>
+                <div>
+                  <strong>Node failure</strong>
+                  <span class="legend-detail"
+                    >simulates outage / hardware failure / drain</span
+                  >
+                </div>
+              </div>
+            </div>
+
+            <div class="game-controls">
+              <button class="action-btn big" id="chaos-kill-1">
+                ⚡ Kill node 1
+              </button>
+              <button class="action-btn big" id="chaos-kill-2">
+                ⚡ Kill node 2
+              </button>
+              <button class="action-btn ghost" id="chaos-restore">
+                ↺ Restore all
+              </button>
+            </div>
+          </div>
+          <div class="right">
+            <div class="stats-panel">
+              <div class="stat">
+                <div class="stat-label">Nodes alive</div>
+                <div class="stat-value" id="chaos-nodes">2 / 2</div>
+              </div>
+              <div class="stat">
+                <div class="stat-label">Pods evicted</div>
+                <div class="stat-value" id="chaos-evicted">0</div>
+              </div>
+              <div class="stat">
+                <div class="stat-label">Pods rescheduled</div>
+                <div class="stat-value" id="chaos-resched">0</div>
+              </div>
+              <div class="stat">
+                <div class="stat-label">Total pods</div>
+                <div class="stat-value" id="chaos-total">12</div>
+              </div>
+            </div>
+            <p class="game-toast" id="chaos-toast"></p>
+          </div>
+        </div>
+        <aside class="notes">
+          A real-world incident: a worker node loses connectivity. K8s detects
+          it, evicts pods, and reschedules them onto healthy nodes. Click "Kill
+          node 1" — watch its 6 pods arc over to node 2. This is what happened
+          automatically last time we lost a node.
+        </aside>
+      </section>
+
+      <!-- Canary Rollout: % traffic slider -->
+      <section
+        class="slide game-slide has-fullscreen"
+        data-section="Flexibility &amp; Scaling"
+        data-color="blue"
+        data-scene="canary"
+      >
+        <button class="fs-toggle" data-fs-toggle>▶ Play full-screen</button>
+        <div class="content-wrap split game-wrap">
+          <div class="left">
+            <p class="kicker">CANARY ROLLOUT</p>
+            <h2 class="headline">Shift traffic gradually,<br />v1 → v2</h2>
+            <p class="subtitle muted">
+              Move the slider. Watch traffic split between v1 (red) and v2
+              (green) pods in real time.
+            </p>
+
+            <div class="load-control">
+              <label class="load-label"
+                >v2 traffic <span id="canary-pct-label">0%</span></label
+              >
+              <input
+                type="range"
+                id="canary-slider"
+                min="0"
+                max="100"
+                value="0"
+                class="load-slider"
+              />
+              <div class="load-track-marks">
+                <span>all v1</span>
+                <span class="threshold">canary</span>
+                <span>all v2</span>
+              </div>
+            </div>
+
+            <div class="game-controls">
+              <button class="action-btn ghost" id="canary-jump-10">10%</button>
+              <button class="action-btn ghost" id="canary-jump-50">50%</button>
+              <button class="action-btn ghost" id="canary-jump-100">
+                100%
+              </button>
+              <button class="action-btn ghost" id="canary-reset">
+                ↺ Reset
+              </button>
+            </div>
+          </div>
+          <div class="right">
+            <div class="stats-panel">
+              <div class="stat">
+                <div class="stat-label">v1 pods (red)</div>
+                <div class="stat-value" id="canary-v1pods">10</div>
+              </div>
+              <div class="stat">
+                <div class="stat-label">v2 pods (green)</div>
+                <div class="stat-value" id="canary-v2pods">0</div>
+              </div>
+              <div class="stat">
+                <div class="stat-label">Requests · v1</div>
+                <div class="stat-value" id="canary-traffic-v1">0</div>
+              </div>
+              <div class="stat">
+                <div class="stat-label">Requests · v2</div>
+                <div class="stat-value" id="canary-traffic-v2">0</div>
+              </div>
+            </div>
+            <p class="game-toast" id="canary-toast"></p>
+          </div>
+        </div>
+        <aside class="notes">
+          Canary deploy: send a small slice of traffic to v2 first. If error
+          rates stay healthy, ramp up. If they spike, roll back. Your service
+          mesh or ingress (Kong, Istio, Linkerd) can do weighted routing
+          automatically.
+        </aside>
+      </section>
+
+      <!-- Service Routing: Service → Pods traffic flow -->
+      <section
+        class="slide game-slide has-fullscreen"
+        data-section="Fundamentals"
+        data-color="green"
+        data-scene="service-routing"
+      >
+        <button class="fs-toggle" data-fs-toggle>▶ Play full-screen</button>
+        <div class="content-wrap split game-wrap">
+          <div class="left">
+            <p class="kicker">SERVICE ROUTING</p>
+            <h2 class="headline">One Service.<br />Many pods.</h2>
+            <p class="subtitle muted">
+              Requests come in, hit the Service (cyan), get distributed to
+              backing pods. Add or kill pods — traffic auto-rebalances.
+            </p>
+
+            <div class="race-legend">
+              <div class="legend-item" style="--accent: var(--accent-cyan)">
+                <span
+                  class="legend-swatch"
+                  style="
+                    background: var(--accent-cyan);
+                    box-shadow: 0 0 12px var(--accent-cyan);
+                  "
+                ></span>
+                <div>
+                  <strong>Service</strong>
+                  <span class="legend-detail">stable name + load balancer</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="game-controls">
+              <button class="action-btn big" id="svc-add">＋ Add pod</button>
+              <button class="action-btn ghost" id="svc-remove">
+                － Remove pod
+              </button>
+              <button class="action-btn ghost" id="svc-kill">
+                ⚡ Kill random
+              </button>
+              <button class="action-btn ghost" id="svc-reset">↺ Reset</button>
+            </div>
+          </div>
+          <div class="right">
+            <div class="stats-panel">
+              <div class="stat">
+                <div class="stat-label">Pods backing service</div>
+                <div class="stat-value" id="svc-count">4</div>
+              </div>
+              <div class="stat">
+                <div class="stat-label">Service DNS</div>
+                <div class="stat-value small">
+                  api.backend.svc.cluster.local
+                </div>
+              </div>
+              <div class="stat">
+                <div class="stat-label">Routing</div>
+                <div class="stat-value small">round-robin</div>
+              </div>
+            </div>
+            <p class="game-toast" id="svc-toast"></p>
+          </div>
+        </div>
+        <aside class="notes">
+          A Service is a stable name plus a load balancer. Pods come and go —
+          clients keep talking to the service name. When a pod dies, the service
+          drops it from the rotation. When you add one, traffic flows to it
+          within seconds.
+        </aside>
+      </section>
+
+      <!-- Traffic Wave interactive scene -->
+      <section
+        class="slide game-slide has-fullscreen"
+        data-section="Flexibility &amp; Scaling"
+        data-color="blue"
+        data-scene="traffic-wave"
+      >
+        <button class="fs-toggle" data-fs-toggle>▶ Play full-screen</button>
+        <div class="content-wrap split game-wrap">
+          <div class="left">
+            <p class="kicker">TRAFFIC WAVE</p>
+            <h2 class="headline">A real day,<br />compressed to a minute</h2>
+            <p class="subtitle muted">
+              A sine wave of traffic. HPA scales pods up and down to absorb it.
+            </p>
+
+            <div class="race-legend">
+              <div class="legend-item" style="--accent: var(--accent-blue)">
+                <span
+                  class="legend-swatch"
+                  style="
+                    background: var(--accent-blue);
+                    box-shadow: 0 0 10px var(--accent-blue);
+                  "
+                ></span>
+                <div>
+                  <strong>Pods</strong>
+                  <span class="legend-detail"
+                    >scale 2 → 10 → 2 with the wave</span
+                  >
+                </div>
+              </div>
+              <div class="legend-item" style="--accent: var(--accent-green)">
+                <span
+                  class="legend-swatch"
+                  style="
+                    background: var(--accent-green);
+                    box-shadow: 0 0 10px var(--accent-green);
+                  "
+                ></span>
+                <div>
+                  <strong>Requests</strong>
+                  <span class="legend-detail"
+                    >flowing particles, served or dropped</span
+                  >
+                </div>
+              </div>
+            </div>
+
+            <div class="game-controls">
+              <button class="action-btn big" id="wave-start">
+                ▶ Start wave
+              </button>
+              <button class="action-btn ghost" id="wave-stop">⏸ Stop</button>
+              <button class="action-btn ghost" id="wave-reset">↺ Reset</button>
+            </div>
+          </div>
+
+          <div class="right">
+            <div class="stats-panel">
+              <div class="stat">
+                <div class="stat-label">Current load</div>
+                <div class="stat-value" id="wave-load">0%</div>
+                <div class="stat-bar">
+                  <div class="stat-bar-fill" id="wave-load-bar"></div>
+                </div>
+              </div>
+              <div class="stat">
+                <div class="stat-label">Pods running</div>
+                <div class="stat-value" id="wave-replicas">2 / 10</div>
+              </div>
+              <div class="stat">
+                <div class="stat-label">Requests served</div>
+                <div class="stat-value" id="wave-served">0</div>
+              </div>
+              <div class="stat">
+                <div class="stat-label">Requests dropped</div>
+                <div class="stat-value" id="wave-dropped">0</div>
+              </div>
+            </div>
+            <p class="game-toast" id="wave-toast"></p>
+          </div>
+        </div>
+        <aside class="notes">
+          Real production traffic looks like waves — quiet at 4 a.m., peak at
+          midday. K8s rides the wave. Without HPA, you'd over-provision for peak
+          (waste money) or under-provision (drop requests).
+        </aside>
+      </section>
+
+      <!-- ================== SECTION 7: OUR CLOUD (cyan) ================== -->
+
+      <section
+        class="slide divider-slide"
+        data-section="Our Cloud"
+        data-color="cyan"
+        data-scene="aurora"
+      >
+        <div class="divider-wrap">
+          <p class="part">PART 6</p>
+          <h2 class="headline">Our cloud · &lt;Cloud&gt;</h2>
+        </div>
+        <aside class="notes">
+          Now the specific stack we run on. ECS for compute. CCE for
+          orchestration. SWR Enterprise for images. All inside &lt;Cloud Provider&gt;.
+        </aside>
+      </section>
+
+      <section class="slide" data-section="Our Cloud" data-color="cyan">
+        <div class="content-wrap">
+          <p class="kicker">THE STACK</p>
+          <h2 class="headline">&lt;Cloud Provider&gt; · three pieces</h2>
+          <div class="approach-grid">
+            <div class="approach-card" style="--accent: var(--accent-cyan)">
+              <span class="approach-tag">Compute</span>
+              <h3>ECS</h3>
+              <p>
+                Elastic Cloud Server. The VM under each Kubernetes worker node.
+              </p>
+            </div>
+            <div class="approach-card" style="--accent: var(--accent-purple)">
+              <span class="approach-tag">Orchestration</span>
+              <h3>CCE</h3>
+              <p>
+                Cloud Container Engine. Managed Kubernetes, control plane
+                handled by &lt;Cloud&gt;.
+              </p>
+            </div>
+            <div
+              class="approach-card"
+              style="--accent: var(--accent-deep-purple)"
+            >
+              <span class="approach-tag">Registry</span>
+              <h3>SWR Enterprise</h3>
+              <p>
+                Private dedicated registry. Scanning, signing, replication, P2P
+                pulls.
+              </p>
+            </div>
+          </div>
+        </div>
+        <aside class="notes">
+          Three cloud services compose the platform. The compute service is just VMs. The managed Kubernetes service is
+          K8s on top of those VMs, with the control plane managed for us. SWR
+          Enterprise stores every image we run.
+        </aside>
+      </section>
+
+      <section class="slide" data-section="Our Cloud" data-color="cyan">
+        <div class="content-wrap">
+          <p class="kicker">CCE SPECIFICS</p>
+          <h2 class="headline">What CCE gives us</h2>
+          <ul class="bullets stagger feature-list">
+            <li>
+              <strong>Managed control plane</strong> — no etcd, no API server to
+              babysit
+            </li>
+            <li>
+              <strong>Native ECS integration</strong> — node groups scale by
+              adding ECS instances
+            </li>
+            <li>
+              <strong>Cloud storage classes</strong> — object store, shared file, SSD-backed, HDD-backed,
+              SSD, plus standard CSI
+            </li>
+            <li>
+              <strong>Built-in SWR pulls</strong> — image pulls authenticate via
+              cloud IAM
+            </li>
+            <li>
+              <strong>VPC-native networking</strong> — pods live on the VPC, not
+              an overlay
+            </li>
+            <li>
+              <strong>One-click upgrades</strong> — minor version bumps without
+              downtime
+            </li>
+          </ul>
+        </div>
+        <aside class="notes">
+          Six wins compared to running vanilla K8s on bare ECS. The big one for
+          us: SWR + CCE auth happens natively, no kube secrets needed for image
+          pulls. The storage variety matters when one workload needs SSD and
+          another needs cheap object storage.
+        </aside>
+      </section>
+
+      <!-- Edge-to-Pod traffic flow game (uses fullscreen-game pattern) -->
+      <section
+        class="slide game-slide has-fullscreen"
+        data-section="Our Cloud"
+        data-color="cyan"
+        data-scene="edge-to-pod"
+      >
+        <button class="fs-toggle" data-fs-toggle>▶ Play full-screen</button>
+        <div class="content-wrap split game-wrap">
+          <div class="left">
+            <p class="kicker">TRAFFIC FLOW</p>
+            <h2 class="headline">A request,<br />end to end</h2>
+            <p class="subtitle muted">
+              Internet → CDN → cloud edge → ingress controller → Service → Pods.<br />And
+              back out.
+            </p>
+
+            <div class="flow-stages">
+              <div class="flow-stage" style="--accent: #ffffff">
+                <span class="flow-dot"></span><strong>Internet</strong> ·
+                clients
+              </div>
+              <div class="flow-stage" style="--accent: #f38020">
+                <span class="flow-dot"></span><strong>CDN</strong> ·
+                DDoS, WAF, CDN
+              </div>
+              <div class="flow-stage" style="--accent: #c7000b">
+                <span class="flow-dot"></span><strong>&lt;Cloud Provider&gt;</strong> ·
+                ELB, VPC entry
+              </div>
+              <div class="flow-stage" style="--accent: #002fa7">
+                <span class="flow-dot"></span><strong>Ingress controller</strong> ·
+                TLS
+              </div>
+              <div class="flow-stage" style="--accent: #22d3ee">
+                <span class="flow-dot"></span><strong>Service</strong> · cluster
+                LB
+              </div>
+              <div class="flow-stage" style="--accent: #60a5fa">
+                <span class="flow-dot"></span><strong>Pods</strong> · your app
+              </div>
+            </div>
+
+            <div class="game-controls">
+              <button class="action-btn big" id="edge-send">
+                ▶ Send request
+              </button>
+              <button class="action-btn ghost" id="edge-burst">⚡ Burst</button>
+              <button class="action-btn ghost" id="edge-ddos">⚠ DDoS</button>
+              <button class="action-btn ghost" id="edge-reset">↺ Reset</button>
+            </div>
+          </div>
+          <div class="right">
+            <div class="stats-panel">
+              <div class="stat">
+                <div class="stat-label">CDN</div>
+                <div class="stat-value" id="edge-cf">0</div>
+              </div>
+              <div class="stat">
+                <div class="stat-label">Blocked at edge</div>
+                <div
+                  class="stat-value"
+                  id="edge-blocked"
+                  style="color: var(--accent-rose)"
+                >
+                  0
+                </div>
+              </div>
+              <div class="stat">
+                <div class="stat-label">Reached pods</div>
+                <div class="stat-value" id="edge-pods">0</div>
+              </div>
+              <div class="stat">
+                <div class="stat-label">Responses</div>
+                <div
+                  class="stat-value"
+                  id="edge-resp"
+                  style="color: var(--accent-green)"
+                >
+                  0
+                </div>
+              </div>
+            </div>
+            <p class="game-toast" id="edge-toast"></p>
+          </div>
+        </div>
+        <aside class="notes">
+          Click "Play full-screen" to see the entire flow without the side
+          panels covering it. In fullscreen: 3D scene fills the screen, with a
+          compact control bar at the bottom.
+        </aside>
+      </section>
+
+      <section class="slide" data-section="Our Cloud" data-color="cyan">
+        <div class="content-wrap">
+          <p class="kicker">PIPELINE</p>
+          <h2 class="headline">Code → SWR → CCE</h2>
+          <div class="pipeline">
+            <div class="pipeline-stage" data-stage="1">
+              <span class="pipeline-icon">⌘</span>
+              <span class="pipeline-name">git push</span>
+              <span class="pipeline-detail">developer</span>
+            </div>
+            <span class="pipeline-arrow"></span>
+            <div class="pipeline-stage" data-stage="2">
+              <span class="pipeline-icon">⌖</span>
+              <span class="pipeline-name">Jenkins</span>
+              <span class="pipeline-detail">build · scan · sign</span>
+            </div>
+            <span class="pipeline-arrow"></span>
+            <div class="pipeline-stage anchor" data-stage="3">
+              <span class="pipeline-icon">▣</span>
+              <span class="pipeline-name">SWR Enterprise</span>
+              <span class="pipeline-detail">our registry</span>
+            </div>
+            <span class="pipeline-arrow"></span>
+            <div class="pipeline-stage" data-stage="4">
+              <span class="pipeline-icon">⎈</span>
+              <span class="pipeline-name">ArgoCD</span>
+              <span class="pipeline-detail">syncs to cluster</span>
+            </div>
+            <span class="pipeline-arrow"></span>
+            <div class="pipeline-stage" data-stage="5">
+              <span class="pipeline-icon">⊞</span>
+              <span class="pipeline-name">CCE pods</span>
+              <span class="pipeline-detail">running</span>
+            </div>
+          </div>
+          <div class="game-controls">
+            <button class="action-btn big" id="pipeline-run">
+              ▶ Run pipeline
+            </button>
+          </div>
+        </div>
+        <aside class="notes">
+          Real flow. Jenkins builds and scans. ArgoCD watches the GitOps repo
+          and pulls images from SWR Enterprise into CCE. We never kubectl apply
+          by hand in production — it's all driven through git.
+        </aside>
+      </section>
+
+      <!-- ================== SECTION 8: YOUR CLUSTER, LIVE (rose) ================== -->
+
+      <section
+        class="slide divider-slide"
+        data-section="Your Cluster · Live"
+        data-color="rose"
+        data-scene="aurora"
+      >
+        <div class="divider-wrap">
+          <p class="part">PART 7</p>
+          <h2 class="headline">Your cluster, right now</h2>
+        </div>
+        <aside class="notes">
+          All the numbers from here on are real, captured from kubectl while
+          building this deck. Your cluster.
+        </aside>
+      </section>
+
+      <!-- LIVE DATA dashboard slide -->
+      <section
+        class="slide"
+        data-section="Your Cluster · Live"
+        data-color="rose"
+      >
+        <div class="content-wrap">
+          <p class="kicker">LIVE DATA</p>
+          <h2 class="headline">Cluster snapshot</h2>
+          <div class="dashboard">
+            <div class="dash-tile">
+              <div class="dash-label">Kubernetes</div>
+              <div class="dash-value">v1.34.3</div>
+              <div class="dash-sub">managed Kubernetes · containerd 1.7.29</div>
+            </div>
+            <div class="dash-tile">
+              <div class="dash-label">Worker nodes</div>
+              <div class="dash-value">2</div>
+              <div class="dash-sub">Ubuntu 22.04 · ECS</div>
+            </div>
+            <div class="dash-tile primary">
+              <div class="dash-label">Pods running</div>
+              <div class="dash-value big">92</div>
+              <div class="dash-sub">across 22 namespaces</div>
+            </div>
+            <div class="dash-tile">
+              <div class="dash-label">Deployments</div>
+              <div class="dash-value">39</div>
+              <div class="dash-sub">+ 20 statefulsets</div>
+            </div>
+            <div class="dash-tile">
+              <div class="dash-label">Services · Ingresses</div>
+              <div class="dash-value">93 · 28</div>
+              <div class="dash-sub">edge through ingress</div>
+            </div>
+            <div class="dash-tile">
+              <div class="dash-label">Persistent volumes</div>
+              <div class="dash-value">16</div>
+              <div class="dash-sub">17 storage classes available</div>
+            </div>
+            <div class="dash-tile">
+              <div class="dash-label">HPAs active</div>
+              <div class="dash-value">4</div>
+              <div class="dash-sub">GitOps · identity · ingress</div>
+            </div>
+            <div class="dash-tile">
+              <div class="dash-label">ArgoCD apps</div>
+              <div class="dash-value">4</div>
+              <div class="dash-sub">all Synced &amp; Healthy</div>
+            </div>
+          </div>
+        </div>
+        <aside class="notes">
+          Real data, real cluster. 92 pods means we're already running a
+          non-trivial K8s footprint. The 4 ArgoCD apps and 4 HPAs say we're past
+          "trying it" and into "running it."
+        </aside>
+      </section>
+
+      <!-- 3D cluster topology -->
+      <section
+        class="slide game-slide has-fullscreen"
+        data-section="Your Cluster · Live"
+        data-color="rose"
+        data-scene="cluster-topology"
+      >
+        <button class="fs-toggle" data-fs-toggle>▶ Play full-screen</button>
+        <div class="content-wrap split game-wrap">
+          <div class="left">
+            <p class="kicker">TOPOLOGY</p>
+            <h2 class="headline">Two nodes,<br />92 pods, balanced</h2>
+            <p class="subtitle muted">
+              Click a namespace to highlight its pods across the cluster.
+            </p>
+
+            <div class="ns-picker" id="ns-picker">
+              <button class="ns-btn active" data-ns="all">All</button>
+              <button class="ns-btn" data-ns="kube-system">
+                kube-system · 18
+              </button>
+              <button class="ns-btn" data-ns="monitoring">
+                monitoring · 13
+              </button>
+              <button class="ns-btn" data-ns="argocd">argocd · 9</button>
+              <button class="ns-btn" data-ns="ingress">ingress · 7</button>
+              <button class="ns-btn" data-ns="kyverno">kyverno · 5</button>
+              <button class="ns-btn" data-ns="dev-007">dev-007 · 5</button>
+              <button class="ns-btn" data-ns="stg-007">stg-007 · 5</button>
+              <button class="ns-btn" data-ns="n8n">n8n · 5</button>
+              <button class="ns-btn" data-ns="keycloak">keycloak · 4</button>
+              <button class="ns-btn" data-ns="vault">vault · 3</button>
+              <button class="ns-btn" data-ns="other">other · 18</button>
+            </div>
+          </div>
+          <div class="right">
+            <div class="topology-info">
+              <div class="ti-row">
+                <span>Node 1</span
+                ><span class="ti-val">10.100.11.142 · 50d · 79% mem</span>
+              </div>
+              <div class="ti-row">
+                <span>Node 2</span
+                ><span class="ti-val">10.100.11.241 · 26d · 56% mem</span>
+              </div>
+              <div class="ti-divider"></div>
+              <div class="ti-row big">
+                <span>Showing</span
+                ><span class="ti-val" id="topo-showing">All 92 pods</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <aside class="notes">
+          Click each namespace to see only those pods light up. The cluster is
+          split across two nodes. Memory pressure is concentrated on node 1 —
+          we'd want to even that out, or scale to a third node.
+        </aside>
+      </section>
+
+      <section
+        class="slide"
+        data-section="Your Cluster · Live"
+        data-color="rose"
+      >
+        <div class="content-wrap">
+          <p class="kicker">WHAT'S RUNNING</p>
+          <h2 class="headline">Our platform stack</h2>
+          <div class="stack-grid">
+            <div class="stack-tile cicd">
+              <h4>CI / CD</h4>
+              <p>Jenkins · ArgoCD</p>
+            </div>
+            <div class="stack-tile data">
+              <h4>Data</h4>
+              <p>CloudNativePG · PMM</p>
+            </div>
+            <div class="stack-tile auth">
+              <h4>Identity</h4>
+              <p>Keycloak · Vault · Passbolt</p>
+            </div>
+            <div class="stack-tile edge">
+              <h4>Edge</h4>
+              <p>Ingress controller · cert-manager</p>
+            </div>
+            <div class="stack-tile policy">
+              <h4>Policy</h4>
+              <p>Kyverno · SonarQube</p>
+            </div>
+            <div class="stack-tile obs">
+              <h4>Observability</h4>
+              <p>Prometheus · Loki · Grafana</p>
+            </div>
+            <div class="stack-tile auto">
+              <h4>Automation</h4>
+              <p>n8n</p>
+            </div>
+            <div class="stack-tile envs">
+              <h4>Environments</h4>
+              <p>backend · frontend<br />dev-007 · stg-007 · nafith-dev</p>
+            </div>
+          </div>
+        </div>
+        <aside class="notes">
+          Eight categories. We've got a real platform — not just K8s, but
+          everything you need to operate one in production. Every tile here is a
+          deliberate decision worth a presentation of its own.
+        </aside>
+      </section>
+
+      <section
+        class="slide"
+        data-section="Your Cluster · Live"
+        data-color="rose"
+      >
+        <div class="content-wrap">
+          <p class="kicker">HPAs IN ACTION</p>
+          <h2 class="headline">Already autoscaling</h2>
+          <pre class="code-block"><code class="language-bash">kubectl get hpa -A
+
+NAMESPACE   NAME                 REFERENCE                       TARGETS       MIN   MAX   REPLICAS
+argocd      argocd-repo-server   Deployment/argocd-repo-server   cpu: 2%/70%    2     3     2
+argocd      argocd-server        Deployment/argocd-server        cpu: 2%/70%    2     3     2
+keycloak    keycloak             StatefulSet/keycloak            cpu: 0%/70%    2     4     2
+ingress     ingress-dp           Deployment/ingress-dp           cpu: 3%/70%    2     5     2</code></pre>
+          <p class="hint-line">
+            All idle right now — but the moment the ingress sees real traffic, it'll
+            scale to 5.
+          </p>
+        </div>
+        <aside class="notes">
+          Four HPAs, each with conservative thresholds. The traffic-facing
+          services — the ingress and identity service — have higher max replicas because
+          they're more elastic.
+        </aside>
+      </section>
+
+      <!-- ================== SECTION 9: CLOSING (teal) ================== -->
+
+      <section class="slide" data-section="Closing" data-color="teal">
+        <div class="content-wrap">
+          <h2 class="headline">Recap</h2>
+          <ul class="bullets recap stagger">
+            <li>
+              <span class="recap-dot teal"></span><strong>Why K8s</strong> —
+              containers needed an operating system
+            </li>
+            <li>
+              <span class="recap-dot red"></span><strong>From VMs</strong> —
+              stop managing servers, describe state
+            </li>
+            <li>
+              <span class="recap-dot green"></span
+              ><strong>The objects</strong> — Pod, Deployment, Service, Ingress
+            </li>
+            <li>
+              <span class="recap-dot blue"></span><strong>The win</strong> —
+              self-healing + autoscaling
+            </li>
+            <li>
+              <span class="recap-dot purple"></span><strong>Our setup</strong> —
+              ECS + CCE + SWR Enterprise
+            </li>
+            <li>
+              <span class="recap-dot amber"></span><strong>Right now</strong> —
+              92 pods, 22 namespaces, healthy
+            </li>
+          </ul>
+        </div>
+        <aside class="notes">
+          Six lines. The last one is the most important — this isn't theory,
+          it's our cluster running today.
+        </aside>
+      </section>
+
+      <section class="slide" data-section="Closing" data-color="teal">
+        <div class="content-wrap">
+          <p class="kicker">ACTION</p>
+          <h2 class="headline">Where to from here?</h2>
+          <ul class="bullets stagger numbered">
+            <li>Run <code>kubectl get pods -n YOUR-NAMESPACE</code></li>
+            <li>Read the Deployment of one service you ship</li>
+            <li>Add an HPA to a service that handles bursty load</li>
+            <li>Send a PR to ArgoCD repo — let it deploy itself</li>
+          </ul>
+        </div>
+        <aside class="notes">
+          Concrete this week. Don't try to learn everything — pick one service,
+          watch it through the lens of K8s objects, file a PR for one
+          improvement.
+        </aside>
+      </section>
+
+      <section class="slide" data-section="Closing" data-color="teal">
+        <div class="content-wrap">
+          <h2 class="headline">Resources</h2>
+          <div class="resource-grid">
+            <div class="resource-group">
+              <h4>Kubernetes</h4>
+              <a
+                href="https://kubernetes.io/docs/"
+                target="_blank"
+                rel="noopener"
+                >kubernetes.io</a
+              >
+              <a
+                href="https://kubernetes.io/docs/tutorials/kubernetes-basics/"
+                target="_blank"
+                rel="noopener"
+                >Tutorials</a
+              >
+            </div>
+            <div class="resource-group">
+              <h4>managed Kubernetes</h4>
+              <a
+                href="https://example.com/docs/managed-kubernetes"
+                target="_blank"
+                rel="noopener"
+                >CCE docs</a
+              >
+              <a
+                href="https://example.com/docs/container-registry"
+                target="_blank"
+                rel="noopener"
+                >SWR Enterprise</a
+              >
+            </div>
+            <div class="resource-group">
+              <h4>GitOps</h4>
+              <a
+                href="https://argo-cd.readthedocs.io/"
+                target="_blank"
+                rel="noopener"
+                >ArgoCD</a
+              >
+              <a href="https://opengitops.dev/" target="_blank" rel="noopener"
+                >OpenGitOps</a
+              >
+            </div>
+            <div class="resource-group">
+              <h4>Tooling</h4>
+              <a href="https://k9scli.io/" target="_blank" rel="noopener"
+                >k9s</a
+              >
+              <a href="https://lens.app/" target="_blank" rel="noopener"
+                >Lens</a
+              >
+            </div>
+            <div class="resource-group">
+              <h4>Policy &amp; Security</h4>
+              <a href="https://kyverno.io/" target="_blank" rel="noopener"
+                >Kyverno</a
+              >
+              <a
+                href="https://www.vaultproject.io/"
+                target="_blank"
+                rel="noopener"
+                >Vault</a
+              >
+            </div>
+          </div>
+        </div>
+        <aside class="notes">
+          Slides will be shared. Everything you need is on this page.
+        </aside>
+      </section>
+
+      <section
+        class="slide qa-slide"
+        data-section="Closing"
+        data-color="teal"
+        data-scene="aurora-soft"
+      >
+        <div class="content-wrap center">
+          <h2 class="qa-text">Questions?</h2>
+          <p class="qa-hint">
+            Press <kbd>D</kbd> for the kubectl demo simulator
+          </p>
+        </div>
+        <aside class="notes">
+          Open the floor. Repeat each question before answering. If I don't
+          know, I'll say so.
+        </aside>
+      </section>
+    </main>
+
+    <!-- Demo overlay -->
+    <div class="demo-overlay" id="demo-overlay">
+      <div class="demo-window">
+        <div class="demo-titlebar">
+          <span class="demo-dots"
+            ><span class="dot red"></span><span class="dot amber"></span
+            ><span class="dot green"></span
+          ></span>
+          <span class="demo-title" id="demo-title">kubectl — Live Demo</span>
+          <button class="demo-close" id="demo-close">×</button>
+        </div>
+        <div class="demo-body">
+          <div class="demo-sidebar">
+            <h4>kubectl walkthroughs</h4>
+            <button class="demo-pick active" data-demo="overview">
+              1. Cluster overview
+            </button>
+            <button class="demo-pick" data-demo="deploy">
+              2. Deploy a service
+            </button>
+            <button class="demo-pick" data-demo="scale">
+              3. Scale &amp; rollout
+            </button>
+            <button class="demo-pick" data-demo="self-heal">
+              4. Self-healing
+            </button>
+            <div class="demo-controls">
+              <button id="demo-play">▶ Play</button>
+              <button id="demo-step">Step ▷</button>
+              <button id="demo-reset">↺ Reset</button>
+            </div>
+            <p class="demo-hint">Each command is narrated before it runs.</p>
+          </div>
+          <div class="demo-terminal" id="demo-terminal">
+            <div class="terminal-output" id="terminal-output"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-bash.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-yaml.min.js"></script>
+
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+        }
+      }
+    </script>
+
+    <script type="module" src="scenes.js"></script>
+    <script type="module" src="presentation.js"></script>
+    <script type="module" src="demo.js"></script>
+  </body>
+</html>

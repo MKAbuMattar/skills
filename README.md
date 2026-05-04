@@ -52,6 +52,12 @@ Tools for building more skills.
   npx skills@latest add MKAbuMattar/skills/skill-builder
   ```
 
+- **generic-by-design** — Scrub a skill, template, README, code repo, or any artifact for **organization-specific fingerprints** — internal cloud regions, branded SaaS products asserted as the user's stack, proprietary cloud-service abbreviations, hardcoded vendor URLs, source-skill author attributions, concept-author attributions (`<author>'s <concept>` patterns), org / company names, internal filesystem paths, stack-specific assertions (`"our setup uses X"`), and hardcoded scale fingerprints. Replaces each with a generic placeholder (`<vendor-saas>`, `<cloud-region>`, `registry.example.com`), role name, or multi-option illustrative list. Ships a `scan-fingerprints.sh` script that catches ~10 categories with line-numbered reports, **wordlists in `scripts/data/*.txt`** (tool data, separate from skill content — users add their own fork-source authors / org names / stack), a pattern catalog with placeholder-shaped examples, a keep-vs-mask decision matrix, RFC-2606 / RFC-5737 placeholder conventions, and synthetic worked before/after examples (Acme / Cumulus / Bastion / FrontEdge — no real vendors). Use whenever you see "generic-by-design okay", "scrub the proprietary refs", or "anonymize this template". The skill itself contains zero real vendor / author / region names.
+
+  ```
+  npx skills@latest add MKAbuMattar/skills/generic-by-design
+  ```
+
 ## Repo Hygiene
 
 - **pre-commit-setup** — Wire **cross-language pre-commit hooks** into any git repository. Detects which languages the repo uses (Node.js / TypeScript, Python, PHP, Java, Go, Rust, Ruby, Shell, Terraform, Markdown) and configures the right formatter / linter / type-checker per language via the universal `pre-commit` framework. Always adds universal hygiene (whitespace, EOF, large-file detection, merge-conflict markers, JSON/YAML/TOML validation), secret scanning (gitleaks), and Conventional Commits enforcement (commitizen / commitlint / regex fallback). Optional **Husky + lint-staged + Prettier** track for pure-Node repos. Ships templates for kitchen-sink and minimal configs, a `detect-languages.sh` script, and a worked polyglot example.
@@ -116,6 +122,14 @@ Tools for building more skills.
   npx skills@latest add MKAbuMattar/skills/architecture-audit
   ```
 
+## Presentations
+
+- **interactive-tech-deck-builder** — Build interactive HTML presentations for cloud / DevOps / platform topics. Each major concept can become a Three.js mini-game (image-vs-container, density race, self-healing, HPA scaling, rolling deploys, traffic waves, chaos engineering, canary rollouts, service routing, end-to-end traffic flow `Internet → CDN → cloud edge → ingress controller → Service → Pods`, and more). Ships a slim slide-controller framework, a dark design system with section accent colors, a kubectl/CLI demo simulator (modal terminal with scripted command playback), live cluster discovery scripts that bake real `kubectl` numbers into a dashboard tile grid, a fullscreen-game toggle that collapses panels into a bottom bar, and a speaker-notes extractor. Templates ship with **placeholder values** (`<cloud-provider>`, `registry.example.com`, `<ingress-controller>`) — fork them and swap in your stack (AWS / Azure / GCP / HuaweiCloud / OCI; ECR / ACR / Artifact Registry / GHCR; Nginx / Kong / Traefik / Istio).
+
+  ```
+  npx skills@latest add MKAbuMattar/skills/interactive-tech-deck-builder
+  ```
+
 ## Writing & Editing
 
 - **humanizer** — Edit or review text to remove signs of AI-generated writing. Catches all 29 patterns from Wikipedia's "Signs of AI writing" guide (significance inflation, promotional language, superficial -ing analyses, vague attributions, em-dash overuse, rule-of-three, AI vocabulary, copula avoidance, negative parallelisms, sycophantic openings, and more). Runs the full draft → audit → final loop (asks "what makes this so obviously AI generated?" and revises until the answer is honest). Supports voice calibration when given a writing sample.
@@ -138,6 +152,7 @@ ln -s "$PWD/skills/typescript-script-developer" ~/.claude/skills/
 ln -s "$PWD/skills/golang-script-developer"   ~/.claude/skills/
 ln -s "$PWD/skills/makefile-script-developer" ~/.claude/skills/
 ln -s "$PWD/skills/skill-builder"             ~/.claude/skills/
+ln -s "$PWD/skills/generic-by-design"         ~/.claude/skills/
 ln -s "$PWD/skills/qa"                        ~/.claude/skills/
 ln -s "$PWD/skills/information-architecture"  ~/.claude/skills/
 ln -s "$PWD/skills/gitops-pipeline-developer" ~/.claude/skills/
@@ -148,6 +163,7 @@ ln -s "$PWD/skills/plan-interview"            ~/.claude/skills/
 ln -s "$PWD/skills/pre-commit-setup"          ~/.claude/skills/
 ln -s "$PWD/skills/architecture-audit"        ~/.claude/skills/
 ln -s "$PWD/skills/terraform-module-developer" ~/.claude/skills/
+ln -s "$PWD/skills/interactive-tech-deck-builder" ~/.claude/skills/
 ```
 
 For other clients, see each tool's skill discovery path in the [client showcase](https://agentskills.io/clients).
