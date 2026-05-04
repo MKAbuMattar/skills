@@ -1,0 +1,19 @@
+module "wrapper" {
+  source   = "../"
+  for_each = var.items
+
+  {{RESOURCE_VAR}}_create      = try(each.value.{{RESOURCE_VAR}}_create, var.defaults.{{RESOURCE_VAR}}_create, true)
+  {{RESOURCE_VAR}}_region      = try(each.value.{{RESOURCE_VAR}}_region, var.defaults.{{RESOURCE_VAR}}_region, null)
+  {{RESOURCE_VAR}}_name        = try(each.value.{{RESOURCE_VAR}}_name, var.defaults.{{RESOURCE_VAR}}_name, "")
+  {{RESOURCE_VAR}}_description = try(each.value.{{RESOURCE_VAR}}_description, var.defaults.{{RESOURCE_VAR}}_description, null)
+  {{RESOURCE_VAR}}_tags        = try(each.value.{{RESOURCE_VAR}}_tags, var.defaults.{{RESOURCE_VAR}}_tags, {})
+
+  # One line per dynamic-block variable in the root module.
+  {{RESOURCE_VAR}}_{{BLOCK_NAME}} = try(each.value.{{RESOURCE_VAR}}_{{BLOCK_NAME}}, var.defaults.{{RESOURCE_VAR}}_{{BLOCK_NAME}}, [])
+
+  # Timeouts (remove if the resource doesn't support timeouts).
+  {{RESOURCE_VAR}}_timeouts = try(each.value.{{RESOURCE_VAR}}_timeouts, var.defaults.{{RESOURCE_VAR}}_timeouts, {})
+
+  # Add ONE LINE here for every additional root variable. The chain is always:
+  #   try(each.value.<var_name>, var.defaults.<var_name>, <fallback-matching-the-type>)
+}

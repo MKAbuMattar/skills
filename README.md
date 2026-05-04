@@ -82,6 +82,14 @@ Tools for building more skills.
   npx skills@latest add MKAbuMattar/skills/gitops-cd-developer
   ```
 
+## Infrastructure as Code
+
+- **terraform-module-developer** — Build production-ready, multi-provider Terraform modules with a strict **8-file structure** (4 root + 4 `wrappers/`) — typed variables prefixed with the resource name, count-conditional resources, dynamic blocks with iterator pattern, outputs using `try/element/concat`, full heredoc provider docs, and a wrapper module supporting batch ops via `for_each`. Generates a polished `README.md` with `BEGIN_TF_DOCS / END_TF_DOCS` markers so **terraform-docs** auto-injects requirements / providers / inputs / outputs / resources tables. Bundles a generic `.terraform-docs.yml`, `.tflint.hcl`, pre-commit fragment, security scanning (**tflint + tfsec/trivy + checkov**) and module testing patterns (Terraform 1.6+ `*.tftest.hcl` + `examples/` directory). Works with any Terraform provider — AWS, Azure, GCP, HuaweiCloud, OCI, DigitalOcean, Cloudflare, and community providers. Ships a multi-provider `scaffold-module.sh`, a 14-check `validate-module.sh`, and a `setup-tooling.sh` that installs the whole toolchain.
+
+  ```
+  npx skills@latest add MKAbuMattar/skills/terraform-module-developer
+  ```
+
 ## Planning & Architecture
 
 - **information-architecture** — Plan the structural and execution architecture of a feature, app, or site. Produces both an `INFORMATION_ARCHITECTURE.md` (sitemap, navigation, content hierarchy, user flows, URL strategy, naming conventions, component reuse map) **and** a phased `PLAN.md` (phases by impact × effort × risk, vertical-slice tasks with sub-tasks, dependencies, estimates, and a detailed task breakdown with Why · How · Impact · Effort). Includes a discovery checklist, phasing guide, task-slicing rules, both templates, and a fully-worked example.
@@ -139,6 +147,7 @@ ln -s "$PWD/skills/deep-discovery"            ~/.claude/skills/
 ln -s "$PWD/skills/plan-interview"            ~/.claude/skills/
 ln -s "$PWD/skills/pre-commit-setup"          ~/.claude/skills/
 ln -s "$PWD/skills/architecture-audit"        ~/.claude/skills/
+ln -s "$PWD/skills/terraform-module-developer" ~/.claude/skills/
 ```
 
 For other clients, see each tool's skill discovery path in the [client showcase](https://agentskills.io/clients).

@@ -1,0 +1,77 @@
+# {{RESOURCE_NAME}} Module
+
+Terraform module which creates a `{{RESOURCE_NAME}}` resource on `{{PROVIDER}}`.
+
+## Usage
+
+### Single resource
+
+```hcl
+module "{{RESOURCE_VAR}}" {
+  source = "./modules/{{SERVICE}}/{{RESOURCE}}"
+
+  {{RESOURCE_VAR}}_name        = "example-{{RESOURCE}}"
+  {{RESOURCE_VAR}}_description = "Example {{RESOURCE_NAME}}"
+  {{RESOURCE_VAR}}_region      = "<your-region>"
+
+  {{RESOURCE_VAR}}_tags = {
+    Environment = "dev"
+    Terraform   = "true"
+  }
+}
+```
+
+### Multiple resources (using wrappers)
+
+```hcl
+module "{{RESOURCE_VAR}}_multiple" {
+  source = "./modules/{{SERVICE}}/{{RESOURCE}}/wrappers"
+
+  defaults = {
+    {{RESOURCE_VAR}}_region = "<your-region>"
+    {{RESOURCE_VAR}}_tags = {
+      Terraform = "true"
+    }
+  }
+
+  items = {
+    example1 = {
+      {{RESOURCE_VAR}}_name = "example-{{RESOURCE}}-1"
+    }
+    example2 = {
+      {{RESOURCE_VAR}}_name = "example-{{RESOURCE}}-2"
+    }
+  }
+}
+```
+
+<!-- BEGIN_TF_DOCS -->
+<!--
+This block is auto-managed by terraform-docs.
+
+Do not edit between the markers — your changes will be overwritten on the next pre-commit run.
+
+Run manually:
+  terraform-docs -c .terraform-docs.yml modules/{{SERVICE}}/{{RESOURCE}}
+
+Or rely on the pre-commit hook to keep it in sync.
+-->
+<!-- END_TF_DOCS -->
+
+## Examples
+
+See the [examples directory](../../../examples/{{SERVICE}}/{{RESOURCE}}) for working configurations.
+
+## Notes
+
+- Add any provider-specific notes about this resource (limitations, quotas, deprecations).
+- Mention required IAM/RBAC permissions if relevant.
+- Mention pricing considerations if applicable.
+
+## Provider documentation
+
+For the full set of arguments and attributes, see the [`{{PROVIDER}}_{{SERVICE}}_{{RESOURCE}}` registry page](https://registry.terraform.io/providers/{{PROVIDER_SOURCE}}/latest/docs/resources/{{SERVICE}}_{{RESOURCE}}).
+
+## License
+
+This module is part of the parent repository. See the repository root for license terms.

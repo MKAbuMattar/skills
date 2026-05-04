@@ -1,0 +1,39 @@
+resource "{{PROVIDER}}_{{SERVICE}}_{{RESOURCE}}" "this" {
+  count = var.{{RESOURCE_VAR}}_create ? 1 : 0
+
+  # Required arguments
+  name   = var.{{RESOURCE_VAR}}_name
+  region = var.{{RESOURCE_VAR}}_region
+
+  # Optional arguments — replace these with the actual fields from the provider registry
+  description = var.{{RESOURCE_VAR}}_description
+
+  # Tags with merge pattern (Name tag derived from {{RESOURCE_VAR}}_name)
+  tags = merge(
+    var.{{RESOURCE_VAR}}_tags,
+    {
+      Name = var.{{RESOURCE_VAR}}_name,
+    },
+  )
+
+  # Dynamic block example — duplicate this for every nested config the resource exposes.
+  # Always use the iterator pattern. Always guard with can(length(...)).
+  dynamic "{{BLOCK_NAME}}" {
+    iterator = {{BLOCK_NAME}}_cfg
+    for_each = can(length(var.{{RESOURCE_VAR}}_{{BLOCK_NAME}})) ? var.{{RESOURCE_VAR}}_{{BLOCK_NAME}} : []
+
+    content {
+      # Required field: direct reference (errors if missing)
+      field1 = {{BLOCK_NAME}}_cfg.value.field1
+      # Optional field: lookup with null fallback so the provider's default applies
+      field2 = lookup({{BLOCK_NAME}}_cfg.value, "field2", null)
+    }
+  }
+
+  # Timeouts — keep this block when the resource supports timeouts; remove if not.
+  timeouts {
+    create = try(var.{{RESOURCE_VAR}}_timeouts.create, "10m")
+    update = try(var.{{RESOURCE_VAR}}_timeouts.update, "10m")
+    delete = try(var.{{RESOURCE_VAR}}_timeouts.delete, "3m")
+  }
+}

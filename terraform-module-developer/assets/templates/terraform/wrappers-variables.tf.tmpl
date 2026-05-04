@@ -1,0 +1,49 @@
+variable "defaults" {
+  description = "Map of default values which will be used for each item."
+  type = object({
+    {{RESOURCE_VAR}}_create      = optional(bool)
+    {{RESOURCE_VAR}}_region      = optional(string)
+    {{RESOURCE_VAR}}_name        = optional(string)
+    {{RESOURCE_VAR}}_description = optional(string)
+    {{RESOURCE_VAR}}_tags        = optional(map(string))
+
+    # Mirror every dynamic-block variable from the root module here as optional(list(object({...}))).
+    {{RESOURCE_VAR}}_{{BLOCK_NAME}} = optional(list(object({
+      field1 = string
+      field2 = optional(string)
+    })))
+
+    # Timeouts — keep when the resource supports timeouts; remove otherwise.
+    {{RESOURCE_VAR}}_timeouts = optional(object({
+      create = optional(string)
+      update = optional(string)
+      delete = optional(string)
+    }))
+  })
+  default = {}
+}
+
+variable "items" {
+  description = "Maps of items to create a wrapper from."
+  type = map(object({
+    {{RESOURCE_VAR}}_create      = optional(bool)
+    {{RESOURCE_VAR}}_region      = optional(string)
+    {{RESOURCE_VAR}}_name        = optional(string)
+    {{RESOURCE_VAR}}_description = optional(string)
+    {{RESOURCE_VAR}}_tags        = optional(map(string))
+
+    # Mirror every dynamic-block variable from the root module here as optional(list(object({...}))).
+    {{RESOURCE_VAR}}_{{BLOCK_NAME}} = optional(list(object({
+      field1 = string
+      field2 = optional(string)
+    })))
+
+    # Timeouts — keep when the resource supports timeouts; remove otherwise.
+    {{RESOURCE_VAR}}_timeouts = optional(object({
+      create = optional(string)
+      update = optional(string)
+      delete = optional(string)
+    }))
+  }))
+  default = {}
+}
