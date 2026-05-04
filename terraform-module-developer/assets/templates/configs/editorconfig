@@ -1,0 +1,21 @@
+# Place at the repository root as `.editorconfig`.
+# Editors that respect this file will format on save.
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 2
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.{tf,tfvars,hcl}]
+indent_size = 2
+
+[*.{md,yml,yaml,json}]
+indent_size = 2
+
+[Makefile]
+indent_style = tab

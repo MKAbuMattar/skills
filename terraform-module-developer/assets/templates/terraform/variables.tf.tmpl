@@ -1,0 +1,78 @@
+variable "{{RESOURCE_VAR}}_create" {
+  description = <<-EOT
+    Controls if {{RESOURCE_NAME}} should be created (it affects almost all resources)
+  EOT
+  type        = bool
+  default     = true
+}
+
+variable "{{RESOURCE_VAR}}_region" {
+  description = <<-EOT
+    (Optional, String, ForceNew) Specifies the region in which to create the resource.
+    If omitted, the provider-level region will be used. Changing this creates a new resource.
+  EOT
+  type        = string
+  default     = null
+}
+
+variable "{{RESOURCE_VAR}}_name" {
+  description = <<-EOT
+    (Required, String) Specifies the name of the {{RESOURCE_NAME}}.
+
+    Add the full sentence from the provider registry here, including any constraints
+    (length limits, character set, uniqueness scope).
+  EOT
+  type        = string
+  default     = ""
+}
+
+variable "{{RESOURCE_VAR}}_description" {
+  description = <<-EOT
+    (Optional, String) Specifies the description of the {{RESOURCE_NAME}}.
+  EOT
+  type        = string
+  default     = null
+}
+
+variable "{{RESOURCE_VAR}}_tags" {
+  description = <<-EOT
+    (Optional, Map) Specifies the key/value pairs to associate with the {{RESOURCE_NAME}}.
+
+    Tags consumers set will be merged with an automatic Name tag derived from {{RESOURCE_VAR}}_name.
+  EOT
+  type        = map(string)
+  default     = {}
+}
+
+# Complex object example — duplicate this block for every dynamic-block variable.
+# Use list(object({...})) with optional() for optional fields. Never use the loose any-typed list.
+variable "{{RESOURCE_VAR}}_{{BLOCK_NAME}}" {
+  description = <<-EOT
+    Specifies the {{BLOCK_NAME}} configuration. The block supports:
+    - field1 - (Required, String) Description from provider registry.
+    - field2 - (Optional, String) Description from provider registry.
+  EOT
+  type = list(object({
+    field1 = string
+    field2 = optional(string)
+  }))
+  default = []
+}
+
+# Timeouts variable — keep when the resource supports timeouts. Remove otherwise.
+variable "{{RESOURCE_VAR}}_timeouts" {
+  description = <<-EOT
+    Specifies the timeouts for resource operations.
+
+    The timeouts block supports:
+    - create - (Optional, String) Timeout for create operation. Default: 10m.
+    - update - (Optional, String) Timeout for update operation. Default: 10m.
+    - delete - (Optional, String) Timeout for delete operation. Default: 3m.
+  EOT
+  type = object({
+    create = optional(string)
+    update = optional(string)
+    delete = optional(string)
+  })
+  default = {}
+}

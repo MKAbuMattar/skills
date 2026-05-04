@@ -1,0 +1,71 @@
+output "{{RESOURCE_VAR}}_id" {
+  description = <<-EOT
+    The resource ID.
+
+    Type: String
+  EOT
+  value = try(element(concat({{PROVIDER}}_{{SERVICE}}_{{RESOURCE}}.this.*.id, [""]), 0), "")
+}
+
+output "{{RESOURCE_VAR}}_name" {
+  description = <<-EOT
+    The name of the {{RESOURCE_NAME}}.
+
+    Type: String
+  EOT
+  value = try(element(concat({{PROVIDER}}_{{SERVICE}}_{{RESOURCE}}.this.*.name, [""]), 0), "")
+}
+
+output "{{RESOURCE_VAR}}_region" {
+  description = <<-EOT
+    The region in which the {{RESOURCE_NAME}} is created.
+
+    Type: String
+  EOT
+  value = try(element(concat({{PROVIDER}}_{{SERVICE}}_{{RESOURCE}}.this.*.region, [""]), 0), "")
+}
+
+output "{{RESOURCE_VAR}}_description" {
+  description = <<-EOT
+    The description of the {{RESOURCE_NAME}}.
+
+    Type: String
+  EOT
+  value = try(element(concat({{PROVIDER}}_{{SERVICE}}_{{RESOURCE}}.this.*.description, [""]), 0), "")
+}
+
+output "{{RESOURCE_VAR}}_status" {
+  description = <<-EOT
+    The status of the {{RESOURCE_NAME}}.
+
+    Type: String
+  EOT
+  value = try(element(concat({{PROVIDER}}_{{SERVICE}}_{{RESOURCE}}.this.*.status, [""]), 0), "")
+}
+
+output "{{RESOURCE_VAR}}_tags" {
+  description = <<-EOT
+    The tags associated with the {{RESOURCE_NAME}}.
+
+    Type: Map(String)
+  EOT
+  value = try(element(concat({{PROVIDER}}_{{SERVICE}}_{{RESOURCE}}.this.*.tags, [{}]), 0), {})
+}
+
+output "{{RESOURCE_VAR}}_created_at" {
+  description = <<-EOT
+    The created time of the {{RESOURCE_NAME}}.
+
+    Type: String
+  EOT
+  value = try(element(concat({{PROVIDER}}_{{SERVICE}}_{{RESOURCE}}.this.*.created_at, [""]), 0), "")
+}
+
+output "{{RESOURCE_VAR}}_updated_at" {
+  description = <<-EOT
+    The updated time of the {{RESOURCE_NAME}}.
+
+    Type: String
+  EOT
+  value = try(element(concat({{PROVIDER}}_{{SERVICE}}_{{RESOURCE}}.this.*.updated_at, [""]), 0), "")
+}
