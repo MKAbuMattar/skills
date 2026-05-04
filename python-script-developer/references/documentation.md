@@ -1,6 +1,6 @@
 # Reference Documentation Template
 
-Every script needs accompanying AWS-style reference documentation — either inline as a markdown block at the top of the module, or as a sibling `<script-name>.md`.
+Every script needs accompanying man-page-style reference documentation — either inline as a markdown block at the top of the module, or as a sibling `<script-name>.md`.
 
 ## Rules
 
@@ -80,12 +80,12 @@ python3 script.py --verbose --output result.txt input.txt
 
 ### Exit Codes
 
-| Code | Meaning           |
-| ---- | ----------------- |
-| 0    | Success           |
-| 1    | General error     |
-| 2    | Invalid arguments |
-| 3    | Permission error  |
+| Code | Meaning              |
+| ---- | -------------------- |
+| 0    | Success              |
+| 1    | General error        |
+| 2    | Invalid arguments    |
+| 3    | Permission error     |
 | 130  | Interrupted (Ctrl+C) |
 
 ## See Also

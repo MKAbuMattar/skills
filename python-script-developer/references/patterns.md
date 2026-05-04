@@ -259,15 +259,15 @@ For `.env` support, use `python-dotenv`. For YAML, `PyYAML`.
 
 ## Common idioms reference
 
-| Pattern                                | Use                            |
-| -------------------------------------- | ------------------------------ |
-| `Path(__file__).resolve().parent`      | Script's own directory         |
-| `path.read_text(encoding="utf-8")`     | Read text safely               |
-| `path.write_text(s, encoding="utf-8")` | Write text                     |
-| `path.glob("*.csv")` / `rglob`         | Iterate files                  |
-| `path.mkdir(parents=True, exist_ok=True)` | Create directory tree       |
-| `tempfile.NamedTemporaryFile`          | Scoped temp file               |
-| `subprocess.run([...], check=True)`    | Run a process, raise on fail   |
-| `logger.exception(...)`                | Log error + traceback          |
-| `from typing import Optional`          | Nullable (or `T \| None` ≥ 3.10) |
-| `dataclass(frozen=True)`               | Immutable record               |
+| Pattern                                   | Use                              |
+| ----------------------------------------- | -------------------------------- |
+| `Path(__file__).resolve().parent`         | Script's own directory           |
+| `path.read_text(encoding="utf-8")`        | Read text safely                 |
+| `path.write_text(s, encoding="utf-8")`    | Write text                       |
+| `path.glob("*.csv")` / `rglob`            | Iterate files                    |
+| `path.mkdir(parents=True, exist_ok=True)` | Create directory tree            |
+| `tempfile.NamedTemporaryFile`             | Scoped temp file                 |
+| `subprocess.run([...], check=True)`       | Run a process, raise on fail     |
+| `logger.exception(...)`                   | Log error + traceback            |
+| `from typing import Optional`             | Nullable (or `T \| None` ≥ 3.10) |
+| `dataclass(frozen=True)`                  | Immutable record                 |

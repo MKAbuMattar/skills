@@ -61,7 +61,7 @@ main "$@"
 3. **Validate the result.** Run `bash scripts/validate-script.sh <your-script.sh>` — it grep-scans the script and checks shebang, strict mode, header comment, `usage`/`main` patterns, quoted positional args, no `eval`, no hardcoded user-home paths, TTY-guarded ANSI codes, GNU-only flags, and stderr redirection. Aim for ≥ 90%.
 4. **Cross-check against the gotchas** in `references/anti-patterns.md` before finishing — especially unquoted vars, hardcoded paths, and missing input validation.
 5. **For cross-platform scripts** (running on macOS or Windows), load `references/cross-platform.md` and apply the relevant rules (sed `-i''`, `readlink -f` replacements, `grep -E` not `-P`).
-6. **Generate AWS-style reference docs** for the script using the template in `references/documentation.md`. Always do this — either inline as a markdown block or as a sibling `<script>.md`.
+6. **Generate man-page-style reference docs** for the script using the template in `references/documentation.md`. Always do this — either inline as a markdown block or as a sibling `<script>.md`.
 
 ## Available resources
 
@@ -95,7 +95,7 @@ main "$@"
 7. Use `${SCRIPT_DIR}` and relative paths; never hardcode absolute paths outside the user's project.
 8. Trap cleanup on `EXIT` / `ERR` when you create temp files or background processes.
 9. Run `scripts/validate-script.sh` on the result; iterate until ≥ 90%.
-10. Generate AWS-style reference documentation alongside the script (see `references/documentation.md`).
+10. Generate man-page-style reference documentation alongside the script (see `references/documentation.md`).
 11. Test cross-platform tooling differences (see `references/cross-platform.md`) when the script will run anywhere besides the author's machine.
 
 ## What you do NOT do

@@ -22,22 +22,22 @@ OS = detect_os()
 
 ## Compatibility rules
 
-| Concern             | Rule                                                                                         |
-| ------------------- | -------------------------------------------------------------------------------------------- |
-| Shebang             | `#!/usr/bin/env python3` — never hardcode a Python path                                      |
-| Paths               | Always `pathlib.Path`. Never string-concat with `/` or `\\`.                                 |
-| Path separators     | Don't hardcode either; `pathlib` handles them.                                               |
-| Encoding            | Always pass `encoding="utf-8"` explicitly to `open()`, `read_text()`, `write_text()`.        |
-| Line endings        | Use `newline=""` when writing CSV with the `csv` module.                                     |
-| Temp dir            | `tempfile.gettempdir()` — never hardcode `/tmp`.                                             |
-| Home dir            | `Path.home()` — never `~` or `$HOME`.                                                        |
-| Config / cache dir  | Use `platformdirs` (third-party) for OS-correct config/cache/data paths.                     |
-| File permissions    | Avoid `os.chmod()` with Unix-only modes. Use `stat` constants. Windows ignores most modes.   |
-| Subprocess          | `subprocess.run([...], check=True, shell=False)`. Adjust executable names per OS.            |
-| Executables         | `shutil.which("git")` finds `git` or `git.exe` correctly.                                    |
-| Signals             | `SIGTERM` / `SIGHUP` don't exist on Windows. Guard with `hasattr(signal, "SIGTERM")`.        |
-| Console colors      | Check `sys.stdout.isatty()` and respect `NO_COLOR`. On Windows, `colorama.init()` if needed. |
-| Newlines in text    | Use `"\n"` for portable text files. Use `os.linesep` only for OS-native output.              |
+| Concern            | Rule                                                                                         |
+| ------------------ | -------------------------------------------------------------------------------------------- |
+| Shebang            | `#!/usr/bin/env python3` — never hardcode a Python path                                      |
+| Paths              | Always `pathlib.Path`. Never string-concat with `/` or `\\`.                                 |
+| Path separators    | Don't hardcode either; `pathlib` handles them.                                               |
+| Encoding           | Always pass `encoding="utf-8"` explicitly to `open()`, `read_text()`, `write_text()`.        |
+| Line endings       | Use `newline=""` when writing CSV with the `csv` module.                                     |
+| Temp dir           | `tempfile.gettempdir()` — never hardcode `/tmp`.                                             |
+| Home dir           | `Path.home()` — never `~` or `$HOME`.                                                        |
+| Config / cache dir | Use `platformdirs` (third-party) for OS-correct config/cache/data paths.                     |
+| File permissions   | Avoid `os.chmod()` with Unix-only modes. Use `stat` constants. Windows ignores most modes.   |
+| Subprocess         | `subprocess.run([...], check=True, shell=False)`. Adjust executable names per OS.            |
+| Executables        | `shutil.which("git")` finds `git` or `git.exe` correctly.                                    |
+| Signals            | `SIGTERM` / `SIGHUP` don't exist on Windows. Guard with `hasattr(signal, "SIGTERM")`.        |
+| Console colors     | Check `sys.stdout.isatty()` and respect `NO_COLOR`. On Windows, `colorama.init()` if needed. |
+| Newlines in text   | Use `"\n"` for portable text files. Use `os.linesep` only for OS-native output.              |
 
 ## OS-specific paths
 

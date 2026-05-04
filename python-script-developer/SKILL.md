@@ -83,7 +83,7 @@ if __name__ == "__main__":
 4. **Validate the result.** Run `python3 scripts/validate-script.py <your-script.py>` — it AST-parses the script and checks shebang, docstrings, type hints, main guard, logging, pathlib, argparse, and error handling. Aim for 100%.
 5. **Cross-check `references/anti-patterns.md`** — especially `os.path` vs `pathlib`, bare `except`, missing `__main__` guard, and hardcoded values.
 6. **For cross-platform scripts**, load `references/cross-platform.md` and apply the rules (signals, paths, console colors, executable suffixes).
-7. **Generate AWS-style docs** using the template in `references/documentation.md` — either inline or as `<script>.md` next to the file.
+7. **Generate man-page-style docs** using the template in `references/documentation.md` — either inline or as `<script>.md` next to the file.
 
 ## Available resources
 
@@ -119,7 +119,7 @@ if __name__ == "__main__":
 8. Use context managers (`with`) for files, locks, sockets, temp files.
 9. Show progress with `tqdm` for any loop that may take more than a couple of seconds.
 10. Run `scripts/validate-script.py` on the result; iterate until ≥ 90%.
-11. Generate AWS-style reference docs (`references/documentation.md`).
+11. Generate man-page-style reference docs (`references/documentation.md`).
 
 ## What you do NOT do
 
