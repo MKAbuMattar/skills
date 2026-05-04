@@ -26,7 +26,9 @@ resource "<provider>_network_vnet" "this" {
 
 ```hcl
 variable "network_vnet_create" {
-  description = "Controls if vnet should be created"
+  description = <<-EOR
+    Controls if vnet should be created
+  EOT
   type        = bool
   default     = true
 }
