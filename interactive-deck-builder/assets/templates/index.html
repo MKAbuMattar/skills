@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Deck — interactive-deck-builder framework</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <!--
+      THIS FILE IS THE FRAMEWORK SKELETON. It contains:
+        - The persistent UI frame (canvas, header, progress bar, overlays).
+        - A handful of placeholder slides demonstrating each slide type.
+
+      Replace the placeholder slides with your deck's actual content.
+      See `references/slide-types.md` for the full template gallery and
+      `references/scene-recipes.md` for scene-authoring patterns.
+    -->
+  </head>
+  <body>
+    <!-- Persistent UI frame ──────────────────────────────────────── -->
+
+    <canvas id="bg-canvas" aria-hidden="true"></canvas>
+
+    <header class="topbar">
+      <span id="section-label" class="section-label"></span>
+      <span id="slide-counter" class="slide-counter"></span>
+    </header>
+
+    <div class="progress">
+      <div id="progress-fill" class="progress-fill"></div>
+    </div>
+
+    <!-- Help overlay (shown on `?`) -->
+    <div id="help-overlay" class="overlay help-overlay">
+      <div class="overlay-card">
+        <h2>Keyboard</h2>
+        <ul>
+          <li><kbd>→</kbd> / <kbd>Space</kbd> — next</li>
+          <li><kbd>←</kbd> — previous</li>
+          <li><kbd>Home</kbd> / <kbd>End</kbd> — first / last slide</li>
+          <li><kbd>O</kbd> — overview grid</li>
+          <li><kbd>S</kbd> — speaker notes</li>
+          <li><kbd>F</kbd> — browser fullscreen</li>
+          <li><kbd>D</kbd> — demo simulator</li>
+          <li><kbd>R</kbd> — reset active scene</li>
+          <li><kbd>?</kbd> — this help</li>
+          <li><kbd>Esc</kbd> — close overlay</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Overview grid (shown on `O`) -->
+    <div id="overview-grid" class="overlay overview-overlay"></div>
+
+    <!-- Demo simulator (shown on `D`; populated by demo.js) -->
+    <div id="demo-overlay" class="overlay demo-overlay">
+      <div id="demo-modal" class="demo-modal"></div>
+    </div>
+
+    <!-- Speaker notes panel (shown on `S`) -->
+    <aside id="notes-panel" class="notes-panel"></aside>
+
+    <!-- Slides ──────────────────────────────────────────────────── -->
+
+    <main class="slides">
+      <!--
+        Slide types (see references/slide-types.md):
+
+          .slide                         (every slide is one)
+          .slide.title                   (title / opening)
+          .slide.big-statement           (one strong sentence)
+          .slide.framework               (framework / multi-pane)
+          .slide.code                    (code block, optionally .highlight-lines)
+          .slide.divider                 (section break, often data-scene="aurora")
+          .slide.scene-slide             (interactive scene)
+          .slide.recap                   (numbered list / takeaways)
+          .slide.q-and-a                 (Q & A divider)
+
+        Required attributes:
+          data-section   — section name (shown in topbar)
+          data-color     — accent color: teal | red | purple | amber | green
+                                       | blue | cyan | rose | deep-purple
+
+        Optional attributes:
+          data-scene     — name of the Three.js scene to activate (see scenes.js)
+
+        Speaker notes go in <aside class="notes"> inside each slide.
+      -->
+
+      <!-- Title slide ─────────────────────────────────────────── -->
+      <section
+        class="slide title active"
+        data-section="opening"
+        data-color="teal"
+        data-scene="particles"
+      >
+        <div class="title-frame">
+          <div class="kicker">Subtitle / kicker</div>
+          <h1 class="display">Your deck title</h1>
+          <div class="byline">Speaker · venue · date</div>
+        </div>
+        <aside class="notes">
+          <p>
+            What you say at the top: hook, why the topic matters, what they'll
+            get.
+          </p>
+        </aside>
+      </section>
+
+      <!-- Section divider ───────────────────────────────────────── -->
+      <section
+        class="slide divider"
+        data-section="part-1"
+        data-color="red"
+        data-scene="aurora"
+      >
+        <div class="divider-frame">
+          <div class="kicker">Part 1</div>
+          <h2 class="headline">First section title</h2>
+        </div>
+        <aside class="notes">
+          <p>Section break. Pause. Set up the next 3-5 slides.</p>
+        </aside>
+      </section>
+
+      <!-- Big-statement slide ──────────────────────────────────── -->
+      <section
+        class="slide big-statement"
+        data-section="part-1"
+        data-color="red"
+      >
+        <p class="statement">A single sentence that anchors the section.</p>
+        <aside class="notes">
+          <p>Read it. Pause. Don't elaborate immediately — let it land.</p>
+        </aside>
+      </section>
+
+      <!-- Framework / content slide with build steps ──────────── -->
+      <section class="slide framework" data-section="part-1" data-color="red">
+        <h2>The three things</h2>
+        <ul class="bullet-list">
+          <li data-build>First point — what it is.</li>
+          <li data-build>Second point — why it matters.</li>
+          <li data-build>Third point — what to do with it.</li>
+        </ul>
+        <aside class="notes">
+          <p>Press → to reveal each bullet one-at-a-time before advancing.</p>
+        </aside>
+      </section>
+
+      <!-- Scene slide (interactive Three.js) ───────────────────── -->
+      <!--
+        For a real scene slide:
+          1. Add a scene factory to scenes.js (see references/scene-recipes.md).
+          2. Register it in the scenes map.
+          3. Set data-scene="<name>" on the slide.
+          4. Add UI controls + stat tiles in the slide.
+          5. Wire them in presentation.js under "PER-DECK WIRING".
+          6. Add a fullscreen-scene toggle button.
+      -->
+      <section
+        class="slide scene-slide"
+        data-section="part-2"
+        data-color="green"
+        data-scene="aurora"
+      >
+        <div class="scene-content">
+          <h2>Interactive concept</h2>
+          <p>Replace this with your scene's controls and stat tiles.</p>
+          <div class="scene-controls">
+            <!-- Add buttons / sliders here. -->
+          </div>
+          <div class="scene-stats">
+            <!-- Add stat tiles here. -->
+          </div>
+          <button data-fullscreen-scene class="fullscreen-toggle">
+            ▶ Play full-screen
+          </button>
+        </div>
+        <aside class="notes">
+          <p>
+            Walk the audience through what the scene shows. Click as you talk.
+          </p>
+        </aside>
+      </section>
+
+      <!-- Code slide with line-by-line reveal ─────────────────── -->
+      <section class="slide code" data-section="part-3" data-color="blue">
+        <h2>Code example</h2>
+        <pre
+          class="highlight-lines"
+        ><code>// each line reveals one-at-a-time on →
+const a = 1;
+const b = 2;
+const result = a + b;
+console.log(result);</code></pre>
+        <aside class="notes">
+          <p>Press → to highlight each line as you explain it.</p>
+        </aside>
+      </section>
+
+      <!-- Recap slide ─────────────────────────────────────────── -->
+      <section class="slide recap" data-section="closing" data-color="teal">
+        <h2>Takeaways</h2>
+        <ol class="recap-list">
+          <li>One-line summary of point 1.</li>
+          <li>One-line summary of point 2.</li>
+          <li>One-line summary of point 3.</li>
+        </ol>
+        <aside class="notes">
+          <p>Restate the three things. Mention next steps / resources.</p>
+        </aside>
+      </section>
+
+      <!-- Q & A ───────────────────────────────────────────────── -->
+      <section
+        class="slide q-and-a"
+        data-section="closing"
+        data-color="teal"
+        data-scene="aurora-soft"
+      >
+        <div class="qa-frame">
+          <h2 class="display">Questions?</h2>
+          <p class="byline">Contact info · resources · social</p>
+        </div>
+        <aside class="notes">
+          <p>Have 2-3 backup slides ready for likely questions.</p>
+        </aside>
+      </section>
+    </main>
+
+    <!-- Module entry ─────────────────────────────────────────────── -->
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.166.0/build/three.module.js"
+        }
+      }
+    </script>
+    <script type="module" src="./scenes.js"></script>
+    <script type="module" src="./presentation.js"></script>
+    <script type="module" src="./demo.js"></script>
+  </body>
+</html>

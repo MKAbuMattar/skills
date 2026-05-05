@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
 #
-# discover-cluster.sh — Run read-only kubectl queries to gather facts for the
-#                       "your cluster" section of a deck.
+# discover-cluster.sh — Run read-only kubectl queries to gather facts for a
+#                       "live cluster" section of a deck.
 #
 # Output is structured so the build agent can copy real numbers directly into
-# the Cluster Snapshot tile dashboard and the cluster-topology Three.js scene.
+# stat tiles and any topology-style Three.js scene the deck uses.
+#
+# This is one preset for kubectl-style sources. For other source types
+# (CSV / JSON / API / SQL / file scan), see references/data-sources.md.
 #
 # Read-only by design: never runs apply / delete / drain / cordon.
 #
