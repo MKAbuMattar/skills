@@ -124,10 +124,10 @@ Tools for building more skills.
 
 ## Presentations
 
-- **interactive-tech-deck-builder** — Build interactive HTML presentations for cloud / DevOps / platform topics. Each major concept can become a Three.js mini-game (image-vs-container, density race, self-healing, HPA scaling, rolling deploys, traffic waves, chaos engineering, canary rollouts, service routing, end-to-end traffic flow `Internet → CDN → cloud edge → ingress controller → Service → Pods`, and more). Ships a slim slide-controller framework, a dark design system with section accent colors, a kubectl/CLI demo simulator (modal terminal with scripted command playback), live cluster discovery scripts that bake real `kubectl` numbers into a dashboard tile grid, a fullscreen-game toggle that collapses panels into a bottom bar, and a speaker-notes extractor. Templates ship with **placeholder values** (`<cloud-provider>`, `registry.example.com`, `<ingress-controller>`) — fork them and swap in your stack (AWS / Azure / GCP / HuaweiCloud / OCI; ECR / ACR / Artifact Registry / GHCR; Nginx / Kong / Traefik / Istio).
+- **interactive-deck-builder** — Build interactive HTML presentations on **any topic** — sales pitches, conference talks, classroom lectures, product demos, scientific visualizations, story telling, training material. Each concept can become a Three.js scene (race, particle-flow, click-to-destroy, scale-up-down, force-directed graph, multi-stage flow, wave generator, color-shift slider, comparison split-screen, and more). Ships a slim slide-controller framework, a dark design system with mood-driven section accent colors, a CLI / REPL / terminal playback simulator (kubectl / psql / git / npm / any scripted CLI), pluggable live-data discovery (CSV / JSON / API / SQL / file scan / kubectl), a fullscreen-scene toggle that collapses panels into a bottom bar, and an auto-generated speaker guide. The framework is topic-agnostic — bring your own metaphor, your own data source, your own scenes. Pairs with complementary skills for Three.js fundamentals, presentation content, slide design, and outline / pitch-deck structure.
 
   ```
-  npx skills@latest add MKAbuMattar/skills/interactive-tech-deck-builder
+  npx skills@latest add MKAbuMattar/skills/interactive-deck-builder
   ```
 
 ## Writing & Editing
@@ -163,7 +163,7 @@ ln -s "$PWD/skills/plan-interview"            ~/.claude/skills/
 ln -s "$PWD/skills/pre-commit-setup"          ~/.claude/skills/
 ln -s "$PWD/skills/architecture-audit"        ~/.claude/skills/
 ln -s "$PWD/skills/terraform-module-developer" ~/.claude/skills/
-ln -s "$PWD/skills/interactive-tech-deck-builder" ~/.claude/skills/
+ln -s "$PWD/skills/interactive-deck-builder" ~/.claude/skills/
 ```
 
 For other clients, see each tool's skill discovery path in the [client showcase](https://agentskills.io/clients).

@@ -1,16 +1,16 @@
-# Fullscreen-Game Pattern
+# Fullscreen-Scene Pattern
 
-Game slides default to a side-by-side split (left: text + controls, right: stats panel). When the user wants the 3D scene to take over, they click the corner toggle — the panels collapse into a single bottom bar and the scene fills the screen.
+Scene slides default to a side-by-side split (left: text + controls, right: stats panel). When the user wants the 3D scene to take over, they click the corner toggle — the panels collapse into a single bottom bar and the scene fills the screen.
 
 ## The toggle button
 
-Every game slide has this in its top-right corner:
+Every scene slide has this in its top-right corner:
 
 ```html
 <button class="fs-toggle" data-fs-toggle>▶ Play full-screen</button>
 ```
 
-When clicked, JS adds `.fullscreen-game` to the slide and changes the button label.
+When clicked, JS adds `.fullscreen-scene` to the slide and changes the button label.
 
 ## The handler (in `presentation.js`)
 
@@ -20,16 +20,16 @@ document.addEventListener("click", (e) => {
   if (!btn) return;
   const slide = btn.closest(".slide");
   if (!slide) return;
-  const isFs = slide.classList.toggle("fullscreen-game");
+  const isFs = slide.classList.toggle("fullscreen-scene");
   btn.textContent = isFs ? "✕ Exit full-screen" : "▶ Play full-screen";
 });
 
 // Esc exits
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
-    const fs = document.querySelector(".slide.fullscreen-game");
+    const fs = document.querySelector(".slide.fullscreen-scene");
     if (fs) {
-      fs.classList.remove("fullscreen-game");
+      fs.classList.remove("fullscreen-scene");
       const btn = fs.querySelector("[data-fs-toggle]");
       if (btn) btn.textContent = "▶ Play full-screen";
     }
@@ -38,8 +38,8 @@ document.addEventListener("keydown", (e) => {
 
 // Auto-exit when navigating to another slide
 function showSlide(idx) {
-  document.querySelectorAll(".slide.fullscreen-game").forEach((s) => {
-    s.classList.remove("fullscreen-game");
+  document.querySelectorAll(".slide.fullscreen-scene").forEach((s) => {
+    s.classList.remove("fullscreen-scene");
     const btn = s.querySelector("[data-fs-toggle]");
     if (btn) btn.textContent = "▶ Play full-screen";
   });
@@ -67,8 +67,8 @@ Naïve fullscreen mode using `position: absolute` + flex causes the right panel 
   transition: all 0.2s;
 }
 
-.slide.fullscreen-game .content-wrap.split,
-.slide.fullscreen-game .content-wrap {
+.slide.fullscreen-scene .content-wrap.split,
+.slide.fullscreen-scene .content-wrap {
   position: fixed; /* viewport-anchored, not slide-anchored */
   bottom: 22px;
   left: 22px;
@@ -81,8 +81,8 @@ Naïve fullscreen mode using `position: absolute` + flex causes the right panel 
   z-index: 60;
   pointer-events: none;
 }
-.slide.fullscreen-game .left,
-.slide.fullscreen-game .right {
+.slide.fullscreen-scene .left,
+.slide.fullscreen-scene .right {
   pointer-events: auto;
   background: rgba(13, 13, 16, 0.82);
   backdrop-filter: blur(10px);
@@ -94,24 +94,20 @@ Naïve fullscreen mode using `position: absolute` + flex causes the right panel 
 }
 
 /* Hide narrative copy in fullscreen — keep only interactive controls */
-.slide.fullscreen-game .left > .kicker,
-.slide.fullscreen-game .left > .headline,
-.slide.fullscreen-game .left > .subtitle,
-.slide.fullscreen-game .race-legend,
-.slide.fullscreen-game .ns-picker,
-.slide.fullscreen-game .topology-info,
-.slide.fullscreen-game .flow-stages {
+.slide.fullscreen-scene .left > .kicker,
+.slide.fullscreen-scene .left > .headline,
+.slide.fullscreen-scene .left > .subtitle {
   display: none;
 }
 
-.slide.fullscreen-game .game-controls {
+.slide.fullscreen-scene .scene-controls {
   display: flex;
   flex-direction: row;
   gap: 6px;
   margin: 0;
   flex-wrap: wrap;
 }
-.slide.fullscreen-game .stats-panel {
+.slide.fullscreen-scene .stats-panel {
   background: transparent;
   border: none;
   padding: 0;
@@ -120,28 +116,18 @@ Naïve fullscreen mode using `position: absolute` + flex causes the right panel 
   gap: 10px;
   align-items: end;
 }
-.slide.fullscreen-game .stat {
+.slide.fullscreen-scene .stat {
   min-width: 0;
 }
-.slide.fullscreen-game .stat-label,
-.slide.fullscreen-game .stat-value {
+.slide.fullscreen-scene .stat-label,
+.slide.fullscreen-scene .stat-value {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* Race-clock (deploy-race, cold-start) collapses to horizontal too */
-.slide.fullscreen-game .race-clock {
-  background: transparent;
-  border: none;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 10px;
-}
-
 /* Toast floats above the bar */
-.slide.fullscreen-game .game-toast {
+.slide.fullscreen-scene .scene-toast {
   position: fixed;
   bottom: 200px;
   left: 50%;
@@ -151,20 +137,21 @@ Naïve fullscreen mode using `position: absolute` + flex causes the right panel 
 }
 ```
 
-## Per-game tweaks
+## Per-scene tweaks
 
-A few games have non-standard panels and need extra overrides:
+If a scene has non-standard panels (vertical clocks, multi-row legends, big sliders with track marks), add per-scene overrides inside `.slide.fullscreen-scene[data-scene="<name>"] ...` selectors so they only apply to that scene.
 
-- **Density race / cold-start race** → `.race-clock` (vertical) → override to grid horizontal.
-- **CVE Hunt** → `.tier-switcher` (vertical) → override to flex row, wrap.
-- **Density Race** → `.mode-switcher` (3-button group) → override padding.
-- **HPA Race / Traffic Wave** → `.load-control` (slider with track marks) → override to flex row, hide track marks.
+Common cases:
 
-All overrides are inside `.slide.fullscreen-game ...` selectors. See the bundled `styles.css` for the full block.
+- **Race-style scenes** (vertical stopwatch panel) → override to a horizontal grid.
+- **Multi-tier legend** → override to a flex row that wraps.
+- **Slider with track marks** → hide the marks, shrink the track height.
+
+All overrides go inside `.slide.fullscreen-scene ...` selectors so they only apply when the slide is in fullscreen mode.
 
 ## Testing
 
-Open every game slide and toggle fullscreen. The bottom bar must:
+Open every scene slide and toggle fullscreen. The bottom bar must:
 
 1. Stay within viewport horizontally on a 1280-wide screen.
 2. Show all controls and at least 3 stats without ellipsis.

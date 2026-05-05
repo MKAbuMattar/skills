@@ -81,16 +81,16 @@ The active section accent is exposed as `--accent` and used by:
 
 The slide structure is a single `<main class="deck">` with absolutely-positioned `<section class="slide">` children. Only the `.active` slide is visible. All scene rendering happens in a single fixed-position `<canvas id="bg-canvas">` behind the deck (z-index: 0; deck is z-index: 10).
 
-Game slides use a split layout:
+Scene slides use a split layout:
 
 ```html
-<div class="content-wrap split game-wrap">
+<div class="content-wrap split scene-wrap">
   <div class="left">
     <p class="kicker">SECTION</p>
     <h2 class="headline">Title</h2>
     <p class="subtitle muted">Description</p>
     <!-- legend / picker / slider -->
-    <div class="game-controls">
+    <div class="scene-controls">
       <button class="action-btn big" id="...">▶ Action</button>
     </div>
   </div>
@@ -102,12 +102,12 @@ Game slides use a split layout:
       </div>
       <!-- repeat 3-4× -->
     </div>
-    <p class="game-toast" id="..."></p>
+    <p class="scene-toast" id="..."></p>
   </div>
 </div>
 ```
 
-When `.fullscreen-game` is added to the slide, the split panels collapse into a single fixed bar at the bottom. See `fullscreen-game-pattern.md` for the override CSS.
+When `.fullscreen-scene` is added to the slide, the split panels collapse into a single fixed bar at the bottom. See `fullscreen-scene-pattern.md` for the override CSS.
 
 ## Reusable components
 
@@ -116,10 +116,9 @@ When `.fullscreen-game` is added to the slide, the split panels collapse into a 
 - `.bullets.numbered` — auto-counter bullets.
 - `.tier-grid.build` — progressive-reveal grid (use `data-build="N"` on each tile).
 - `.code-block.highlight-lines` — code where each line can be highlighted on click. JS splits `<code>` into `<span class="line">` elements; controller toggles `.active`.
-- `.three-col-cmd` — three-column command comparison (manual / docker / k8s pattern).
 - `.two-col-list` — left column ✗-style "what we lose", right column ✓-style "what we gain".
 - `.evolution` — 4-tile horizontal timeline.
 - `.dashboard` / `.dash-tile` — live-data tile grid.
-- `.stack-grid` / `.stack-tile` — platform inventory grid.
-- `.race-clock` — vertical clock for race-style games.
-- `.flow-stages` / `.flow-chip` — pipeline flow legend.
+- `.stats-panel` / `.stat` / `.stat-label` / `.stat-value` — scene stat tiles.
+- `.scene-controls` — button row inside a scene slide.
+- `.scene-toast` — transient floating notice on a scene slide.

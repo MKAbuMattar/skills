@@ -146,36 +146,36 @@ COPY package.json package-lock.json ./</code></pre>
 
 The slide controller in `presentation.js` splits lines and drives a `.line.active` highlight per click before advancing to the next slide.
 
-## Game slide
+## Scene slide
 
 ```html
 <section
-  class="slide game-slide has-fullscreen"
+  class="slide scene-slide has-fullscreen"
   data-section="..."
   data-color="..."
-  data-scene="self-healing"
+  data-scene="<your-scene-name>"
 >
   <button class="fs-toggle" data-fs-toggle>▶ Play full-screen</button>
-  <div class="content-wrap split game-wrap">
+  <div class="content-wrap split scene-wrap">
     <div class="left">
       <p class="kicker">CATEGORY</p>
       <h2 class="headline">Title<br />(short)</h2>
       <p class="subtitle muted">One-line description.</p>
       <!-- legend / picker / slider -->
-      <div class="game-controls">
-        <button class="action-btn big" id="game-action">▶ Action</button>
-        <button class="action-btn ghost" id="game-reset">↺ Reset</button>
+      <div class="scene-controls">
+        <button class="action-btn big" id="scene-action">▶ Action</button>
+        <button class="action-btn ghost" id="scene-reset">↺ Reset</button>
       </div>
     </div>
     <div class="right">
       <div class="stats-panel">
         <div class="stat">
           <div class="stat-label">Metric</div>
-          <div class="stat-value" id="game-metric">0</div>
+          <div class="stat-value" id="scene-metric">0</div>
         </div>
         <!-- 3-4 stats -->
       </div>
-      <p class="game-toast" id="game-toast"></p>
+      <p class="scene-toast" id="scene-toast"></p>
     </div>
   </div>
   <aside class="notes">
@@ -183,6 +183,8 @@ The slide controller in `presentation.js` splits lines and drives a `.line.activ
   </aside>
 </section>
 ```
+
+`data-scene` must match a key registered in the `scenes` map in `scenes.js`. Pick the metaphor first, find the closest recipe in `scene-recipes.md`, then write the factory and register it.
 
 ## Recap
 
